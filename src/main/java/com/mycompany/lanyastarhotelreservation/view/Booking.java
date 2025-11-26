@@ -20,7 +20,7 @@ public class Booking extends javax.swing.JFrame {
 
     private final String[] internationalDestinations = {
         "--Select Destination--",
-        "Hong Kong", "Japan", "Singapore", "South Korea"
+        "Hong Kong", "Japan", "China", "Singapore", "South Korea"
     };
 
     /**
