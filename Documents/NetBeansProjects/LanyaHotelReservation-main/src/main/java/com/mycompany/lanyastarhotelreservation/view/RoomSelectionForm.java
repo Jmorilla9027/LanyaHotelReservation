@@ -7,7 +7,7 @@ import com.mycompany.lanyastarhotelreservation.model.Addon;
 import com.mycompany.lanyastarhotelreservation.model.Services;
 import java.util.ArrayList;
 import java.util.List;
-
+import javax.swing.JOptionPane;
 /**
  *
  * @author johnm
@@ -17,8 +17,6 @@ public class RoomSelectionForm extends javax.swing.JFrame {
     private List<Services> services;
     private int totalGuests;
     private int nightsStay;
-    private int poolDays;
-    private int gymDays;
     /**
      * Creates new form RoomSelectionForm
      */
@@ -28,39 +26,282 @@ public class RoomSelectionForm extends javax.swing.JFrame {
         initializeForm();
     }
     private void initializeModels() {
-    // Initialize addons
-    addons = new ArrayList<>();
-    addons.add(new Addon("Bed", 650.00, "Extra bed per night"));
-    addons.add(new Addon("Blanket", 250.00, "Additional blanket"));
-    addons.add(new Addon("Pillows", 100.00, "Extra pillows"));
-    addons.add(new Addon("Toiletries", 200.00, "Toiletries set"));
+        // Initialize addons
+        addons = new ArrayList<>();
+        addons.add(new Addon("Bed", 650.00, "Extra bed per night"));
+        addons.add(new Addon("Blanket", 250.00, "Additional blanket"));
+        addons.add(new Addon("Pillows", 100.00, "Extra pillows"));
+        addons.add(new Addon("Toiletries", 200.00, "Toiletries set"));
 
-    // Initialize services
-    services = new ArrayList<>();
-    services.add(new Services("Swimming Pool", 300.00, "Daily access", "per day per person"));
-    services.add(new Services("Gym", 500.00, "Fitness center access", "per day per person"));
-    services.add(new Services("Foot Spa", 825.00, "Relaxing foot treatment", "45 minutes"));
-    services.add(new Services("Aroma Facial Massage", 1045.00, "Aromatherapy facial massage", "45 minutes"));
-    services.add(new Services("Thai Massage", 1540.00, "Traditional Thai massage", "75 minutes"));
-}
+        // Initialize services
+        services = new ArrayList<>();
+        services.add(new Services("Swimming Pool", 300.00, "Daily access", "per day per person"));
+        services.add(new Services("Gym", 500.00, "Fitness center access", "per day per person"));
+        services.add(new Services("Foot Spa", 825.00, "Relaxing foot treatment", "45 minutes"));
+        services.add(new Services("Aroma Facial Massage", 1045.00, "Aromatherapy facial massage", "45 minutes"));
+        services.add(new Services("Thai Massage", 1540.00, "Traditional Thai massage", "75 minutes"));
+    }
 
-    private void initializeForm() {
-        // Initialize comboboxes
+     private void initializeForm() {
         cmbAvailAddons.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "--Select--", "Yes", "No" }));
         cmbAvailServices.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "--Select--", "Yes", "No" }));
 
-        // Hide panels initially
         AddonPanel.setVisible(false);
         ServicesPanel.setVisible(false);
-
-        // Set Pillow rate label
         jLabel8.setText("Php 100.00");
 
-        // Initialize room type combobox
         cmbRoomType.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { 
             "--Select Room Type--", "Standard", "Deluxe", "Quadruple", "Family", "Suite" 
         }));
     }
+     
+    public void setBookingDetails(int totalGuests, int nightsStay) {
+        this.totalGuests = totalGuests;
+        this.nightsStay = nightsStay;
+        updateValidationLimits();
+    }
+    
+    private void updateValidationLimits() {
+        // Services already have their max quantity calculation
+        for (Services service : services) {
+            service.calculateMaxQuantity(totalGuests, nightsStay);
+        }
+        // Addons will be validated in validateAddonQuantity method
+    }
+    // Validation methods that delegate to model
+    public boolean validateForm() {
+        List<String> errors = new ArrayList<>();
+        
+        // Validate room selection
+        if (cmbRoomType.getSelectedIndex() == 0) {
+            errors.add("Please select a room type");
+        }
+        
+        // Validate addons if panel is visible
+        if (AddonPanel.isVisible()) {
+            String addonValidation = validateAddons();
+            if (!"VALID".equals(addonValidation)) {
+                errors.add(addonValidation);
+            }
+        }
+        
+        // Validate services if panel is visible
+        if (ServicesPanel.isVisible()) {
+            String serviceValidation = validateServices();
+            if (!"VALID".equals(serviceValidation)) {
+                errors.add(serviceValidation);
+            }
+        }
+        
+        if (!errors.isEmpty()) {
+            showValidationErrors(errors);
+            return false;
+        }
+        
+        return true;
+    }
+    
+    private String validateAddons() {
+        StringBuilder errors = new StringBuilder();
+        List<Addon> selectedAddons = getSelectedAddons();
+
+        for (Addon addon : selectedAddons) {
+            String validation = validateAddonQuantity(addon);
+            if (!"VALID".equals(validation)) {
+                if (errors.length() > 0) errors.append("\n");
+                errors.append(validation);
+            }
+        }
+
+        return errors.length() == 0 ? "VALID" : errors.toString();
+    }
+    
+    private String validateAddonQuantity(Addon addon) {
+       int quantity = addon.getQuantity();
+       String name = addon.getName();
+
+       if (quantity < 0) {
+           return name + " quantity cannot be negative";
+       }
+
+       if (quantity == 0) {
+           return "VALID";
+       }
+
+       // Custom validation based on addon type
+       switch (name) {
+           case "Bed":
+               if (quantity > totalGuests) {
+                   return "Number of beds cannot exceed number of guests (" + totalGuests + ")";
+               }
+               break;
+           case "Blanket":
+               if (quantity > totalGuests * 2) {
+                   return "Maximum 2 blankets per guest allowed (" + totalGuests + " guests)";
+               }
+               break;
+           case "Pillows":
+               if (quantity > totalGuests * 4) {
+                   return "Maximum 4 pillows per guest allowed (" + totalGuests + " guests)";
+               }
+               break;
+           case "Toiletries":
+               if (quantity > totalGuests * 2) {
+                   return "Maximum 2 toiletries sets per guest allowed (" + totalGuests + " guests)";
+               }
+               break;
+       }
+
+       return "VALID";
+   }
+
+    private String validateServices() {
+        StringBuilder errors = new StringBuilder();
+        List<Services> selectedServices = getSelectedServices();
+
+        for (Services service : selectedServices) {
+            int daysAvailed = getServiceDays(service);
+            String validation = service.validateQuantity(totalGuests, daysAvailed, nightsStay);
+            if (!"VALID".equals(validation)) {
+                if (errors.length() > 0) errors.append("\n");
+                errors.append(validation);
+            }
+        }
+
+        return errors.length() == 0 ? "VALID" : errors.toString();
+    }
+    
+    private int getServiceDays(Services service) {
+        // For daily services, you might want to add day input fields
+        // For now, assuming they want the service for all days
+        if (service.requiresDaysInput()) {
+            return nightsStay; // Default to all days
+        }
+        return 0;
+    }
+    
+    private void showValidationErrors(List<String> errors) {
+        String errorMessage = String.join("\n", errors);
+        JOptionPane.showMessageDialog(this, errorMessage, "Validation Error", JOptionPane.ERROR_MESSAGE);
+    }
+    
+    // Existing methods remain the same...
+
+
+    
+    private void clearAddonSelections() {
+        cbBed.setSelected(false);
+        cbBlanket.setSelected(false);
+        cbPillows.setSelected(false);
+        cbToiletries.setSelected(false);
+        txtBedQuantity.setText("");
+        txtBlanketQuantity.setText("");
+        txtPillowsQuantity.setText("");
+        txtToiletriesQuantity.setText("");
+    }
+    
+    private void clearServiceSelections() {
+        cbSwimmingPool.setSelected(false);
+        cbGym.setSelected(false);
+        cbFootSpa.setSelected(false);
+        cbAFMassage.setSelected(false);
+        cbThaiMassage.setSelected(false);
+        txtSPQuantity.setText("");
+        txtGymQuantity.setText("");
+        txtFSQuantity.setText("");
+        txtAFMQuantity.setText("");
+        txtTMQuantity.setText("");
+    }
+    
+    // Add a Next button handler (you'll need to add this button to your form)
+    private void btnNextActionPerformed(java.awt.event.ActionEvent evt) {
+        if (validateForm()) {
+            // Proceed to next form (e.g., SummaryForm)
+            openSummaryForm();
+        }
+    }
+    
+    private void openSummaryForm() {
+        // Implementation for opening summary form
+        JOptionPane.showMessageDialog(this, "Proceeding to summary...");
+    }
+    
+    // Rest of your existing methods (getSelectedAddons, getSelectedServices, etc.)
+    public List<Addon> getSelectedAddons() {
+        List<Addon> selectedAddons = new ArrayList<>();
+        
+        if (cbBed.isSelected() && !txtBedQuantity.getText().isEmpty()) {
+            Addon bed = addons.get(0);
+            bed.setSelected(true);
+            bed.setQuantity(Integer.parseInt(txtBedQuantity.getText()));
+            selectedAddons.add(bed);
+        }
+        
+        if (cbBlanket.isSelected() && !txtBlanketQuantity.getText().isEmpty()) {
+            Addon blanket = addons.get(1);
+            blanket.setSelected(true);
+            blanket.setQuantity(Integer.parseInt(txtBlanketQuantity.getText()));
+            selectedAddons.add(blanket);
+        }
+        
+        if (cbPillows.isSelected() && !txtPillowsQuantity.getText().isEmpty()) {
+            Addon pillows = addons.get(2);
+            pillows.setSelected(true);
+            pillows.setQuantity(Integer.parseInt(txtPillowsQuantity.getText()));
+            selectedAddons.add(pillows);
+        }
+        
+        if (cbToiletries.isSelected() && !txtToiletriesQuantity.getText().isEmpty()) {
+            Addon toiletries = addons.get(3);
+            toiletries.setSelected(true);
+            toiletries.setQuantity(Integer.parseInt(txtToiletriesQuantity.getText()));
+            selectedAddons.add(toiletries);
+        }
+        
+        return selectedAddons;
+    }
+
+    public List<Services> getSelectedServices() {
+        List<Services> selectedServices = new ArrayList<>();
+
+        if (cbSwimmingPool.isSelected() && !txtSPQuantity.getText().isEmpty()) {
+            Services pool = services.get(0);
+            pool.setSelected(true);
+            pool.setQuantity(Integer.parseInt(txtSPQuantity.getText()));
+            selectedServices.add(pool);
+        }
+
+        if (cbGym.isSelected() && !txtGymQuantity.getText().isEmpty()) {
+            Services gym = services.get(1);
+            gym.setSelected(true);
+            gym.setQuantity(Integer.parseInt(txtGymQuantity.getText()));
+            selectedServices.add(gym);
+        }
+
+        if (cbFootSpa.isSelected() && !txtFSQuantity.getText().isEmpty()) {
+            Services footSpa = services.get(2);
+            footSpa.setSelected(true);
+            footSpa.setQuantity(Integer.parseInt(txtFSQuantity.getText()));
+            selectedServices.add(footSpa);
+        }
+
+        if (cbAFMassage.isSelected() && !txtAFMQuantity.getText().isEmpty()) {
+            Services aromaMassage = services.get(3);
+            aromaMassage.setSelected(true);
+            aromaMassage.setQuantity(Integer.parseInt(txtAFMQuantity.getText()));
+            selectedServices.add(aromaMassage);
+        }
+
+        if (cbThaiMassage.isSelected() && !txtTMQuantity.getText().isEmpty()) {
+            Services thaiMassage = services.get(4);
+            thaiMassage.setSelected(true);
+            thaiMassage.setQuantity(Integer.parseInt(txtTMQuantity.getText()));
+            selectedServices.add(thaiMassage);
+        }
+
+        return selectedServices;
+    }
+
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -116,7 +357,6 @@ public class RoomSelectionForm extends javax.swing.JFrame {
         txtFSQuantity = new javax.swing.JTextField();
         txtAFMQuantity = new javax.swing.JTextField();
         txtTMQuantity = new javax.swing.JTextField();
-        btnTest = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
 
@@ -415,13 +655,6 @@ public class RoomSelectionForm extends javax.swing.JFrame {
                 .addContainerGap(15, Short.MAX_VALUE))
         );
 
-        btnTest.setText("TEST");
-        btnTest.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                btnTestActionPerformed(evt);
-            }
-        });
-
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
@@ -434,14 +667,8 @@ public class RoomSelectionForm extends javax.swing.JFrame {
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                             .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                             .addComponent(AddonPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addGroup(layout.createSequentialGroup()
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(ServicesPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                            .addGroup(layout.createSequentialGroup()
-                                .addGap(135, 135, 135)
-                                .addComponent(btnTest)
-                                .addGap(0, 0, Short.MAX_VALUE)))))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(ServicesPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
                 .addContainerGap())
         );
         layout.setVerticalGroup(
@@ -458,9 +685,7 @@ public class RoomSelectionForm extends javax.swing.JFrame {
                     .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                         .addComponent(ServicesPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(38, 38, 38)
-                        .addComponent(btnTest)
-                        .addGap(58, 58, 58)))
+                        .addGap(119, 119, 119)))
                 .addContainerGap())
         );
 
@@ -468,186 +693,29 @@ public class RoomSelectionForm extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void cmbAvailAddonsActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cmbAvailAddonsActionPerformed
-        // TODO add your handling code here:
-        String selection = (String) cmbAvailAddons.getSelectedItem();
-    if ("Yes".equals(selection)) {
-        AddonPanel.setVisible(true);
-    } else {
-        AddonPanel.setVisible(false);
-        // Reset all addon selections
-        cbBed.setSelected(false);
-        cbBlanket.setSelected(false);
-        cbPillows.setSelected(false);
-        cbToiletries.setSelected(false);
-        txtBedQuantity.setText("");
-        txtBlanketQuantity.setText("");
-        txtPillowsQuantity.setText("");
-        txtToiletriesQuantity.setText("");
-    }
-    
+     String selection = (String) cmbAvailAddons.getSelectedItem();
+        AddonPanel.setVisible("Yes".equals(selection));
+        if (!"Yes".equals(selection)) {
+            clearAddonSelections();
+        }
     }//GEN-LAST:event_cmbAvailAddonsActionPerformed
 
     private void cmbRoomTypeActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cmbRoomTypeActionPerformed
         // TODO add your handling code here:
     }//GEN-LAST:event_cmbRoomTypeActionPerformed
     // Validation method for addons
-    public String validateAddons() {
-        if (AddonPanel.isVisible()) {
-            return "VALID"; // Addons panel not visible, no validation needed
-        }
 
-        StringBuilder errors = new StringBuilder();
-        List<Addon> selectedAddons = getSelectedAddons();
-
-        // If no addons are selected, it's valid (user might not want any addons)
-        if (selectedAddons.isEmpty()) {
-            return "VALID";
-        }
-
-        for (Addon addon : selectedAddons) {
-            String validation = addon.validateQuantity(totalGuests, nightsStay);
-            if (!"VALID".equals(validation)) {
-                if (errors.length() > 0) errors.append("\n");
-                errors.append(validation);
-            }
-        }
-
-        return errors.length() == 0 ? "VALID" : errors.toString();
-    }
-
-    // Validation method for services
-    public String validateServices() {
-        if (ServicesPanel.isVisible()) {
-            return "VALID"; // Services panel not visible, no validation needed
-        }
-
-        StringBuilder errors = new StringBuilder();
-        List<Services> selectedServices = getSelectedServices();
-
-        // If no services are selected, it's valid (user might not want any services)
-        if (selectedServices.isEmpty()) {
-            return "VALID";
-        }
-
-        // Get days for daily services
-        for (Services service : selectedServices) {
-            int daysAvailed = 0;
-            if ("Swimming Pool".equals(service.getName())) {
-                daysAvailed = poolDays;
-            } else if ("Gym".equals(service.getName())) {
-                daysAvailed = gymDays;
-            }
-
-            String validation = service.validateQuantity(totalGuests, daysAvailed, nightsStay);
-            if (!"VALID".equals(validation)) {
-                if (errors.length() > 0) errors.append("\n");
-                errors.append(validation);
-            }
-        }
-
-        return errors.length() == 0 ? "VALID" : errors.toString();
-    }
     private void txtTMQuantityActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtTMQuantityActionPerformed
         // TODO add your handling code here:
     }//GEN-LAST:event_txtTMQuantityActionPerformed
-    public List<Addon> getSelectedAddons() {
-    List<Addon> selectedAddons = new ArrayList<>();
-    
-    if (cbBed.isSelected() && !txtBedQuantity.getText().isEmpty()) {
-        Addon bed = addons.get(0);
-        bed.setSelected(true);
-        bed.setQuantity(Integer.parseInt(txtBedQuantity.getText()));
-        selectedAddons.add(bed);
-    }
-    
-    if (cbBlanket.isSelected() && !txtBlanketQuantity.getText().isEmpty()) {
-        Addon blanket = addons.get(1);
-        blanket.setSelected(true);
-        blanket.setQuantity(Integer.parseInt(txtBlanketQuantity.getText()));
-        selectedAddons.add(blanket);
-    }
-    
-    if (cbPillows.isSelected() && !txtPillowsQuantity.getText().isEmpty()) {
-        Addon pillows = addons.get(2);
-        pillows.setSelected(true);
-        pillows.setQuantity(Integer.parseInt(txtPillowsQuantity.getText()));
-        selectedAddons.add(pillows);
-    }
-    
-    if (cbToiletries.isSelected() && !txtToiletriesQuantity.getText().isEmpty()) {
-        Addon toiletries = addons.get(3);
-        toiletries.setSelected(true);
-        toiletries.setQuantity(Integer.parseInt(txtToiletriesQuantity.getText()));
-        selectedAddons.add(toiletries);
-    }
-    
-    return selectedAddons;
-}
 
-    public List<Services> getSelectedServices() {
-        List<Services> selectedServices = new ArrayList<>();
-
-        if (cbSwimmingPool.isSelected() && !txtSPQuantity.getText().isEmpty()) {
-            Services pool = services.get(0);
-            pool.setSelected(true);
-            pool.setQuantity(Integer.parseInt(txtSPQuantity.getText()));
-            selectedServices.add(pool);
-        }
-
-        if (cbGym.isSelected() && !txtGymQuantity.getText().isEmpty()) {
-            Services gym = services.get(1);
-            gym.setSelected(true);
-            gym.setQuantity(Integer.parseInt(txtGymQuantity.getText()));
-            selectedServices.add(gym);
-        }
-
-        if (cbFootSpa.isSelected() && !txtFSQuantity.getText().isEmpty()) {
-            Services footSpa = services.get(2);
-            footSpa.setSelected(true);
-            footSpa.setQuantity(Integer.parseInt(txtFSQuantity.getText()));
-            selectedServices.add(footSpa);
-        }
-
-        if (cbAFMassage.isSelected() && !txtAFMQuantity.getText().isEmpty()) {
-            Services aromaMassage = services.get(3);
-            aromaMassage.setSelected(true);
-            aromaMassage.setQuantity(Integer.parseInt(txtAFMQuantity.getText()));
-            selectedServices.add(aromaMassage);
-        }
-
-        if (cbThaiMassage.isSelected() && !txtTMQuantity.getText().isEmpty()) {
-            Services thaiMassage = services.get(4);
-            thaiMassage.setSelected(true);
-            thaiMassage.setQuantity(Integer.parseInt(txtTMQuantity.getText()));
-            selectedServices.add(thaiMassage);
-        }
-
-        return selectedServices;
-    }
     private void cmbAvailServicesActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cmbAvailServicesActionPerformed
-        // TODO add your handling code here:
         String selection = (String) cmbAvailServices.getSelectedItem();
-    if ("Yes".equals(selection)) {
-        ServicesPanel.setVisible(true);
-    } else {
-        ServicesPanel.setVisible(false);
-        // Reset all service selections
-        cbSwimmingPool.setSelected(false);
-        cbGym.setSelected(false);
-        cbFootSpa.setSelected(false);
-        cbAFMassage.setSelected(false);
-        cbThaiMassage.setSelected(false);
-        txtSPQuantity.setText("");
-        txtGymQuantity.setText("");
-        txtFSQuantity.setText("");
-        txtAFMQuantity.setText("");
-        txtTMQuantity.setText("");
-    }
+        ServicesPanel.setVisible("Yes".equals(selection));
+        if (!"Yes".equals(selection)) {
+            clearServiceSelections();
+        }
     }//GEN-LAST:event_cmbAvailServicesActionPerformed
-
-    private void btnTestActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnTestActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_btnTestActionPerformed
 
     /**
      * @param args the command line arguments
@@ -687,7 +755,6 @@ public class RoomSelectionForm extends javax.swing.JFrame {
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel AddonPanel;
     private javax.swing.JPanel ServicesPanel;
-    private javax.swing.JButton btnTest;
     private javax.swing.JCheckBox cbAFMassage;
     private javax.swing.JCheckBox cbBed;
     private javax.swing.JCheckBox cbBlanket;

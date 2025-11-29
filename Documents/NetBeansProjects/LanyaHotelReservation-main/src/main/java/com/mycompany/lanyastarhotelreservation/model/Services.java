@@ -59,36 +59,35 @@ public class Services {
         return rate * quantity;
     }
 
-    // VALIDATION METHODS
+    // FIXED VALIDATION METHOD
     public String validateQuantity(int guestCount, int daysAvailed, int nightsStay) {
         if (quantity < 0) {
             return name + " quantity cannot be negative";
         }
         
-        // If quantity is 0, it's valid (not selected or no quantity needed)
+        // If quantity is 0, it's valid (not selected)
         if (quantity == 0) {
             return "VALID";
         }
         
+        // General quantity validation
         if (maxQuantity > 0 && quantity > maxQuantity) {
-            return name + " quantity cannot exceed " + maxQuantity + " guests";
+            return name + " quantity cannot exceed " + maxQuantity;
         }
         
-        // Daily services validation (Pool, Gym)
-        if ("Swimming Pool".equals(name) || "Gym".equals(name)) {
+        // Daily services validation
+        if (requiresDaysInput()) {
             if (daysAvailed < 0) {
-                return "Days for " + name + " cannot be negative";
+                return name + " days cannot be negative";
             }
-            if (daysAvailed > 0 && daysAvailed > nightsStay) {
+            if (daysAvailed > nightsStay) {
                 return name + " days (" + daysAvailed + ") cannot exceed stay duration (" + nightsStay + " nights)";
             }
             if (quantity > guestCount) {
                 return name + " quantity cannot exceed number of guests (" + guestCount + ")";
             }
-        }
-        
-        // Spa services validation
-        if ("Foot Spa".equals(name) || "Aroma Facial Massage".equals(name) || "Thai Massage".equals(name)) {
+        } else {
+            // Spa services validation
             if (quantity > guestCount) {
                 return name + " quantity cannot exceed number of guests (" + guestCount + ")";
             }

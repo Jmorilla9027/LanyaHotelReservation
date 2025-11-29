@@ -4,10 +4,12 @@
  */
 package com.mycompany.lanyastarhotelreservation.view;
 import com.mycompany.lanyastarhotelreservation.model.Booking;
-import java.time.LocalDate;
 import javax.swing.JOptionPane;
-import javax.swing.JTextField;
 import java.util.List;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 
 
 
@@ -459,21 +461,30 @@ public class BookingForm extends javax.swing.JFrame {
     }//GEN-LAST:event_cmbDestinationActionPerformed
 
     private void btnNextActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnNextActionPerformed
-        // TODO add your handling code here:                                    
-     // Create Booking model object and collect data from form
-    Booking booking = collectFormData();
-    
-    // Validate the booking using model's validation
-    List<String> errors = booking.validate();
-    
-    if (!errors.isEmpty()) {
-        showValidationErrors(errors);
-        return;
+try {
+        // Create Booking model object and collect data from form
+        Booking booking = collectFormData();
+        
+        // Use your Booking model's validate() method that returns List<String>
+        List<String> validationErrors = booking.validate();
+        
+        if (!validationErrors.isEmpty()) {
+            showValidationErrors(validationErrors);
+            return;
+        }
+        
+        // If validation passes, open RoomSelectionForm
+        openRoomSelectionForm(booking);
+        
+    } catch (NumberFormatException e) {
+        showError("Please enter valid numbers for age and guest fields");
+    } catch (DateTimeParseException e) {
+        showError("Please enter dates in YYYY-MM-DD format (e.g., 2024-01-15)");
+    } catch (IllegalArgumentException e) {
+        showError(e.getMessage());
+    } catch (Exception e) {
+        showError("An unexpected error occurred: " + e.getMessage());
     }
-    
-    // If validation passes, proceed to next step
-    JOptionPane.showMessageDialog(this, "Booking validated successfully!\nProceeding to next step...");
-    // TODO: Add navigation to next screen or save to database
 }
 
 private void showValidationErrors(List<String> errors) {
@@ -482,49 +493,96 @@ private void showValidationErrors(List<String> errors) {
 }
 
 private Booking collectFormData() {
-    Booking booking = new Booking();
+    // Collect form data
+    String destinationType = (String) cmbType.getSelectedItem();
+    String destination = (String) cmbDestination.getSelectedItem();
+    String checkInText = txtCheckIn.getText().trim();
+    String checkOutText = txtCheckOut.getText().trim();
+    int leadGuestAge = Integer.parseInt(txtLeadGuest.getText().trim());
+    int numberOfAdults = Integer.parseInt(jTextField1.getText().trim());
     
-    // Set basic properties
-    booking.setDestinationType((String) cmbType.getSelectedItem());
-    booking.setDestination((String) cmbDestination.getSelectedItem());
+    String childrenCountStr = (String) cmbChildren.getSelectedItem();
+    int numberOfChildren = (childrenCountStr != null && !childrenCountStr.equals("--Select Count--")) 
+        ? Integer.parseInt(childrenCountStr) : 0;
     
-    // Set dates using model's parse method
-    booking.setCheckInDate(Booking.parseDate(txtCheckIn.getText().trim()));
-    booking.setCheckOutDate(Booking.parseDate(txtCheckOut.getText().trim()));
+    // Parse dates using your Booking model's parseDate method
+    LocalDate checkInDate = Booking.parseDate(checkInText);
+    LocalDate checkOutDate = Booking.parseDate(checkOutText);
     
-    // Set guest information
-    try {
-        booking.setNumberOfAdults(Integer.parseInt(jTextField1.getText().trim()));
-        booking.setNumberOfChildren(Integer.parseInt((String) cmbChildren.getSelectedItem()));
-        booking.setLeadGuestAge(Integer.parseInt(txtLeadGuest.getText().trim()));
-        
-        // Add children ages
-        addChildrenAges(booking);
-        
-    } catch (NumberFormatException e) {
-        JOptionPane.showMessageDialog(this, "Please enter valid numeric values for ages and guest counts.");
+    // Collect children ages
+    List<Integer> childrenAges = new ArrayList<>();
+    if (numberOfChildren >= 1 && !txtChildAge1.getText().trim().isEmpty()) {
+        childrenAges.add(parseChildAge(txtChildAge1.getText().trim()));
     }
+    if (numberOfChildren >= 2 && !txtChildAge2.getText().trim().isEmpty()) {
+        childrenAges.add(parseChildAge(txtChildAge2.getText().trim()));
+    }
+    if (numberOfChildren >= 3 && !txtChildAge3.getText().trim().isEmpty()) {
+        childrenAges.add(parseChildAge(txtChildAge3.getText().trim()));
+    }
+    if (numberOfChildren >= 4 && !txtChildAge4.getText().trim().isEmpty()) {
+        childrenAges.add(parseChildAge(txtChildAge4.getText().trim()));
+    }
+    
+    // Create Booking object using your model's constructor
+    Booking booking = new Booking(destinationType, destination, checkInDate, 
+                                checkOutDate, leadGuestAge, numberOfAdults, 
+                                numberOfChildren, childrenAges);
     
     return booking;
 }
 
-private void addChildrenAges(Booking booking) {
+private void openRoomSelectionForm(Booking booking) {
     try {
-        if (booking.getNumberOfChildren() >= 1 && !txtChildAge1.getText().trim().isEmpty()) {
-            booking.addChildAge(Integer.parseInt(txtChildAge1.getText().trim()));
-        }
-        if (booking.getNumberOfChildren() >= 2 && !txtChildAge2.getText().trim().isEmpty()) {
-            booking.addChildAge(Integer.parseInt(txtChildAge2.getText().trim()));
-        }
-        if (booking.getNumberOfChildren() >= 3 && !txtChildAge3.getText().trim().isEmpty()) {
-            booking.addChildAge(Integer.parseInt(txtChildAge3.getText().trim()));
-        }
-        if (booking.getNumberOfChildren() >= 4 && !txtChildAge4.getText().trim().isEmpty()) {
-            booking.addChildAge(Integer.parseInt(txtChildAge4.getText().trim()));
-        }
-    } catch (NumberFormatException e) {
-        JOptionPane.showMessageDialog(this, "Please enter valid numeric ages for children.");
+        // Create and configure the RoomSelectionForm
+        RoomSelectionForm roomForm = new RoomSelectionForm();
+        
+        // Pass the booking data to the room selection form
+        roomForm.setBookingDetails(
+            booking.calculatePayingGuests(), // Total paying guests
+            booking.calculateNights()        // Number of nights
+        );
+        
+        // Center the new form on screen
+        roomForm.setLocationRelativeTo(null);
+        
+        // Make the new form visible
+        roomForm.setVisible(true);
+        
+        // Optional: Close the current booking form
+        // this.dispose();
+        
+        System.out.println("Successfully opened RoomSelectionForm");
+        System.out.println("Guests: " + booking.calculatePayingGuests() + ", Nights: " + booking.calculateNights());
+        
+    } catch (Exception e) {
+        e.printStackTrace();
+        showError("Error opening room selection: " + e.getMessage());
     }
+}
+
+// Keep your existing helper methods
+private LocalDate parseDate(String dateText) throws DateTimeParseException {
+    if (dateText == null || dateText.trim().isEmpty()) {
+        throw new DateTimeParseException("Empty date", "", 0);
+    }
+    return LocalDate.parse(dateText.trim(), DateTimeFormatter.ISO_DATE);
+}
+
+private int parseChildAge(String ageText) {
+    if (ageText == null || ageText.trim().isEmpty()) {
+        throw new IllegalArgumentException("Please enter age for all children");
+    }
+    int age = Integer.parseInt(ageText.trim());
+    if (age < 0 || age > 17) {
+        throw new IllegalArgumentException("Child age must be between 0 and 17 years");
+    }
+    return age;
+}
+
+private void showError(String message) {
+    JOptionPane.showMessageDialog(this, message, "Validation Error", JOptionPane.ERROR_MESSAGE);
+
     }//GEN-LAST:event_btnNextActionPerformed
 
     private void txtCheckInActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtCheckInActionPerformed

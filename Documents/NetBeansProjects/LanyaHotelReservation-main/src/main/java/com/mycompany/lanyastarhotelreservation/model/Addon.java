@@ -46,34 +46,34 @@ public class Addon {
         return rate * quantity;
     }
 
-    // VALIDATION METHODS
-public String validateQuantity(int guestCount, int nightsStay) {
-    if (quantity < 0) {
-        return name + " quantity cannot be negative";
+    public void setMaxQuantity(int maxQuantity) {
+        this.maxQuantity = maxQuantity;
     }
     
-    // If quantity is 0, it's valid (not selected or no quantity needed)
-    if (quantity == 0) {
+    // FIXED VALIDATION METHOD
+    public String validateQuantity(int guestCount, int nightsStay) {
+        if (quantity < 0) {
+            return name + " quantity cannot be negative";
+        }
+        
+        // If quantity is 0, it's valid (not selected)
+        if (quantity == 0) {
+            return "VALID";
+        }
+        
+        // Bed-specific validation
+        if ("Bed".equals(name)) {
+            if (quantity > guestCount) {
+                return "Number of beds cannot exceed number of guests (" + guestCount + ")";
+            }
+        }
+        
+        // General validation for other addons
+        if (!"Bed".equals(name) && maxQuantity > 0 && quantity > maxQuantity) {
+            return name + " quantity cannot exceed " + maxQuantity;
+        }
+        
         return "VALID";
     }
-    
-    if (maxQuantity > 0 && quantity > maxQuantity) {
-        return name + " quantity cannot exceed " + maxQuantity + " (based on guest count)";
-    }
-    
-    // Bed-specific validation
-    if ("Bed".equals(name)) {
-        if (quantity > guestCount) {
-            return "Number of beds cannot exceed number of guests (" + guestCount + ")";
-        }
-    }
-    
-    // General validation for other addons
-    if (!"Bed".equals(name) && quantity > guestCount * 2) {
-        return name + " quantity seems excessive for " + guestCount + " guests";
-    }
-    
-    return "VALID";
-}
 }
 

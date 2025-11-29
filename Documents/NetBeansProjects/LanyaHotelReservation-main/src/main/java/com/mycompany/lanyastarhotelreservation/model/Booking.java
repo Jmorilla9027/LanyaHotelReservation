@@ -2,6 +2,7 @@ package com.mycompany.lanyastarhotelreservation.model;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -20,11 +21,26 @@ public class Booking {
     private static final int MIN_LEAD_GUEST_AGE = 18;
     private static final int MIN_CHILD_AGE = 0;
     private static final int MAX_CHILD_AGE = 17;
-
+    
+    // Constructors
     public Booking() {
         this.childrenAges = new ArrayList<>();
     }
+    
+    public Booking(String destinationType, String destination, LocalDate checkInDate, 
+                  LocalDate checkOutDate, int leadGuestAge, int numberOfAdults, 
+                  int numberOfChildren, List<Integer> childrenAges) {
+        this.destinationType = destinationType;
+        this.destination = destination;
+        this.checkInDate = checkInDate;
+        this.checkOutDate = checkOutDate;
+        this.leadGuestAge = leadGuestAge;
+        this.numberOfAdults = numberOfAdults;
+        this.numberOfChildren = numberOfChildren;
+        this.childrenAges = childrenAges != null ? childrenAges : new ArrayList<>();
+    }
 
+    // Validation Methods
     public List<String> validate() {
         List<String> errors = new ArrayList<>();
         
@@ -91,12 +107,55 @@ public class Booking {
         }
     }
     
-    // New method to validate individual child age
+    // Business Logic Methods
+    public int calculatePayingGuests() {
+        int payingChildren = 0;
+
+        for (int age : childrenAges) {
+            if (age >= 8) { // Children 8-17 are considered paying guests
+                payingChildren++;
+            }
+        }
+
+        return numberOfAdults + payingChildren;
+    }
+
+    public int calculateNights() {
+        if (checkInDate != null && checkOutDate != null && checkOutDate.isAfter(checkInDate)) {
+            return (int) ChronoUnit.DAYS.between(checkInDate, checkOutDate);
+        }
+        return 0;
+    }
+
+    public int getFreeChildrenCount() {
+        int freeChildren = 0;
+
+        for (int age : childrenAges) {
+            if (age >= 0 && age <= 7) {
+                freeChildren++;
+            }
+        }
+
+        return freeChildren;
+    }
+
+    public int getChildrenNeedingBedCount() {
+        int childrenNeedingBed = 0;
+
+        for (int age : childrenAges) {
+            if (age >= 8 && age <= 17) {
+                childrenNeedingBed++;
+            }
+        }
+
+        return childrenNeedingBed;
+    }
+    
+    // Utility Methods
     public static boolean isValidChildAge(int age) {
         return age >= MIN_CHILD_AGE && age <= MAX_CHILD_AGE;
     }
     
-    // New method to get child age validation message
     public static String getChildAgeValidationMessage() {
         return "Child age must be between " + MIN_CHILD_AGE + " and " + MAX_CHILD_AGE + " years old.";
     }
@@ -110,6 +169,10 @@ public class Booking {
         } catch (DateTimeParseException e) {
             return null;
         }
+    }
+    
+    public boolean hasAllChildAges() {
+        return childrenAges != null && childrenAges.size() == numberOfChildren;
     }
 
     // Getters and Setters
@@ -142,10 +205,5 @@ public class Booking {
             this.childrenAges = new ArrayList<>();
         }
         this.childrenAges.add(age);
-    }
-    
-    // Utility method to check if all required child ages are provided
-    public boolean hasAllChildAges() {
-        return childrenAges != null && childrenAges.size() == numberOfChildren;
     }
 }
