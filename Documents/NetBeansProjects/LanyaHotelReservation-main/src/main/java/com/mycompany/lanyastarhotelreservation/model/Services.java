@@ -18,6 +18,12 @@ public class Services {
     private boolean selected;
     private int maxQuantity;
     private int maxDays;
+    private int discountCount;
+
+    // Constants for service names
+    private static final String SWIMMING_POOL = "Swimming Pool";
+    private static final String GYM = "Gym";
+    private static final String BED = "Bed"; // For consistency if needed elsewhere
 
     public Services(String name, double rate, String description, String duration) {
         this.name = name;
@@ -28,6 +34,7 @@ public class Services {
         this.selected = false;
         this.maxQuantity = 0;
         this.maxDays = 0;
+        this.discountCount = 0;    
     }
 
     // Getters and Setters
@@ -58,8 +65,16 @@ public class Services {
     public double getTotalPrice() {
         return rate * quantity;
     }
+    
+    public int getDiscountCount() {
+        return discountCount;
+    }
 
-    // FIXED VALIDATION METHOD
+    public void setDiscountCount(int discountCount) {
+        this.discountCount = discountCount;
+    }
+
+    // FIXED VALIDATION METHOD using constants
     public String validateQuantity(int guestCount, int daysAvailed, int nightsStay) {
         if (quantity < 0) {
             return name + " quantity cannot be negative";
@@ -75,7 +90,7 @@ public class Services {
             return name + " quantity cannot exceed " + maxQuantity;
         }
         
-        // Daily services validation
+        // Daily services validation using constants
         if (requiresDaysInput()) {
             if (daysAvailed < 0) {
                 return name + " days cannot be negative";
@@ -99,13 +114,52 @@ public class Services {
     public void calculateMaxQuantity(int guestCount, int nightsStay) {
         this.maxQuantity = guestCount;
         
-        // Set max days for daily services
-        if ("Swimming Pool".equals(name) || "Gym".equals(name)) {
+        // Set max days for daily services using constants
+        if (SWIMMING_POOL.equals(name) || GYM.equals(name)) {
             this.maxDays = nightsStay;
         }
     }
 
     public boolean requiresDaysInput() {
-        return "Swimming Pool".equals(name) || "Gym".equals(name);
+        // Using constants instead of string literals
+        return SWIMMING_POOL.equals(name) || GYM.equals(name);
+    }
+
+    // NEW DISCOUNT VALIDATION METHOD
+    public String validateDiscount(int numAdults) {
+        // If discount count is 0 or empty (blank), it's valid
+        if (discountCount == 0) {
+            return "VALID";
+        }
+        
+        // Check if negative
+        if (discountCount < 0) {
+            return name + " discount count cannot be negative";
+        }
+        
+        // Check if exceeds number of adults
+        if (discountCount > numAdults) {
+            return name + " discount count cannot exceed number of adults (" + numAdults + ")";
+        }
+        
+        // Check if discount count exceeds quantity
+        if (discountCount > quantity) {
+            return name + " discount count cannot exceed quantity (" + quantity + ")";
+        }
+        
+        return "VALID";
+    }
+
+    // Helper method to parse discount from text field
+    public void setDiscountCountFromTextField(String discountText) {
+        if (discountText == null || discountText.trim().isEmpty()) {
+            this.discountCount = 0;
+        } else {
+            try {
+                this.discountCount = Integer.parseInt(discountText.trim());
+            } catch (NumberFormatException e) {
+                this.discountCount = 0; // Default to 0 if invalid
+            }
+        }
     }
 }

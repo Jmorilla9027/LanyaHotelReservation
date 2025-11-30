@@ -5,9 +5,13 @@
 package com.mycompany.lanyastarhotelreservation.view;
 import com.mycompany.lanyastarhotelreservation.model.Addon;
 import com.mycompany.lanyastarhotelreservation.model.Services;
+import com.mycompany.lanyastarhotelreservation.model.Booking;
+import com.DAO.BookingDAO;
 import java.util.ArrayList;
 import java.util.List;
 import javax.swing.JOptionPane;
+import java.sql.*;
+
 /**
  *
  * @author johnm
@@ -17,6 +21,8 @@ public class RoomSelectionForm extends javax.swing.JFrame {
     private List<Services> services;
     private int totalGuests;
     private int nightsStay;
+    private int numAdults; 
+    private Booking booking;
     /**
      * Creates new form RoomSelectionForm
      */
@@ -55,9 +61,11 @@ public class RoomSelectionForm extends javax.swing.JFrame {
         }));
     }
      
-    public void setBookingDetails(int totalGuests, int nightsStay) {
-        this.totalGuests = totalGuests;
-        this.nightsStay = nightsStay;
+    public void setBooking(Booking booking) {
+        this.booking = booking;
+        this.totalGuests = booking.calculatePayingGuests();
+        this.nightsStay = booking.calculateNights();
+        this.numAdults = booking.getNumberOfAdults();
         updateValidationLimits();
     }
     
@@ -83,6 +91,11 @@ public class RoomSelectionForm extends javax.swing.JFrame {
             if (!"VALID".equals(addonValidation)) {
                 errors.add(addonValidation);
             }
+            
+            String addonDiscountValidation = validateAddonDiscounts();
+            if (!"VALID".equals(addonDiscountValidation)) {
+                errors.add(addonDiscountValidation);
+            }
         }
         
         // Validate services if panel is visible
@@ -90,6 +103,11 @@ public class RoomSelectionForm extends javax.swing.JFrame {
             String serviceValidation = validateServices();
             if (!"VALID".equals(serviceValidation)) {
                 errors.add(serviceValidation);
+            }
+            
+            String serviceDiscountValidation = validateServiceDiscounts();
+            if (!"VALID".equals(serviceDiscountValidation)) {
+                errors.add(serviceDiscountValidation);
             }
         }
         
@@ -100,13 +118,29 @@ public class RoomSelectionForm extends javax.swing.JFrame {
         
         return true;
     }
-    
-    private String validateAddons() {
+    //New Validation for discounts
+    private String validateAddonDiscounts() {
         StringBuilder errors = new StringBuilder();
         List<Addon> selectedAddons = getSelectedAddons();
 
         for (Addon addon : selectedAddons) {
-            String validation = validateAddonQuantity(addon);
+            String validation = addon.validateDiscount(numAdults);
+            if (!"VALID".equals(validation)) {
+                if (errors.length() > 0) errors.append("\n");
+                errors.append(validation);
+            }
+        }
+
+        return errors.length() == 0 ? "VALID" : errors.toString();
+    }
+
+    // NEW: Validate service discounts
+    private String validateServiceDiscounts() {
+        StringBuilder errors = new StringBuilder();
+        List<Services> selectedServices = getSelectedServices();
+
+        for (Services service : selectedServices) {
+            String validation = service.validateDiscount(numAdults);
             if (!"VALID".equals(validation)) {
                 if (errors.length() > 0) errors.append("\n");
                 errors.append(validation);
@@ -116,44 +150,21 @@ public class RoomSelectionForm extends javax.swing.JFrame {
         return errors.length() == 0 ? "VALID" : errors.toString();
     }
     
-    private String validateAddonQuantity(Addon addon) {
-       int quantity = addon.getQuantity();
-       String name = addon.getName();
+    private String validateAddons() {
+        StringBuilder errors = new StringBuilder();
+        List<Addon> selectedAddons = getSelectedAddons();
 
-       if (quantity < 0) {
-           return name + " quantity cannot be negative";
-       }
-
-       if (quantity == 0) {
-           return "VALID";
-       }
-
-       // Custom validation based on addon type
-       switch (name) {
-           case "Bed":
-               if (quantity > totalGuests) {
-                   return "Number of beds cannot exceed number of guests (" + totalGuests + ")";
-               }
-               break;
-           case "Blanket":
-               if (quantity > totalGuests * 2) {
-                   return "Maximum 2 blankets per guest allowed (" + totalGuests + " guests)";
-               }
-               break;
-           case "Pillows":
-               if (quantity > totalGuests * 4) {
-                   return "Maximum 4 pillows per guest allowed (" + totalGuests + " guests)";
-               }
-               break;
-           case "Toiletries":
-               if (quantity > totalGuests * 2) {
-                   return "Maximum 2 toiletries sets per guest allowed (" + totalGuests + " guests)";
-               }
-               break;
-       }
-
-       return "VALID";
-   }
+        for (Addon addon : selectedAddons) {
+            // Use the model's validation instead of duplicate method
+            String validation = addon.validateQuantity(totalGuests, nightsStay);
+            if (!"VALID".equals(validation)) {
+                if (errors.length() > 0) errors.append("\n");
+                errors.append(validation);
+            }
+        }
+        return errors.length() == 0 ? "VALID" : errors.toString();
+    }
+    
 
     private String validateServices() {
         StringBuilder errors = new StringBuilder();
@@ -213,51 +224,47 @@ public class RoomSelectionForm extends javax.swing.JFrame {
         txtTMQuantity.setText("");
     }
     
-    // Add a Next button handler (you'll need to add this button to your form)
-    private void btnNextActionPerformed(java.awt.event.ActionEvent evt) {
-        if (validateForm()) {
-            // Proceed to next form (e.g., SummaryForm)
-            openSummaryForm();
-        }
-    }
     
     private void openSummaryForm() {
         // Implementation for opening summary form
         JOptionPane.showMessageDialog(this, "Proceeding to summary...");
     }
     
-    // Rest of your existing methods (getSelectedAddons, getSelectedServices, etc.)
     public List<Addon> getSelectedAddons() {
         List<Addon> selectedAddons = new ArrayList<>();
-        
+
         if (cbBed.isSelected() && !txtBedQuantity.getText().isEmpty()) {
             Addon bed = addons.get(0);
             bed.setSelected(true);
             bed.setQuantity(Integer.parseInt(txtBedQuantity.getText()));
+            bed.setDiscountCountFromTextField(txtDiscountBed.getText());
             selectedAddons.add(bed);
         }
-        
+
         if (cbBlanket.isSelected() && !txtBlanketQuantity.getText().isEmpty()) {
             Addon blanket = addons.get(1);
             blanket.setSelected(true);
             blanket.setQuantity(Integer.parseInt(txtBlanketQuantity.getText()));
+            blanket.setDiscountCountFromTextField(txtDiscountBlanket.getText());
             selectedAddons.add(blanket);
         }
-        
+
         if (cbPillows.isSelected() && !txtPillowsQuantity.getText().isEmpty()) {
             Addon pillows = addons.get(2);
             pillows.setSelected(true);
             pillows.setQuantity(Integer.parseInt(txtPillowsQuantity.getText()));
+            pillows.setDiscountCountFromTextField(txtDiscountPillow.getText());
             selectedAddons.add(pillows);
         }
-        
+
         if (cbToiletries.isSelected() && !txtToiletriesQuantity.getText().isEmpty()) {
             Addon toiletries = addons.get(3);
             toiletries.setSelected(true);
             toiletries.setQuantity(Integer.parseInt(txtToiletriesQuantity.getText()));
+            toiletries.setDiscountCountFromTextField(txtDiscountToiletry.getText());
             selectedAddons.add(toiletries);
         }
-        
+
         return selectedAddons;
     }
 
@@ -268,6 +275,7 @@ public class RoomSelectionForm extends javax.swing.JFrame {
             Services pool = services.get(0);
             pool.setSelected(true);
             pool.setQuantity(Integer.parseInt(txtSPQuantity.getText()));
+            pool.setDiscountCountFromTextField(txtDiscountPool.getText());
             selectedServices.add(pool);
         }
 
@@ -275,6 +283,7 @@ public class RoomSelectionForm extends javax.swing.JFrame {
             Services gym = services.get(1);
             gym.setSelected(true);
             gym.setQuantity(Integer.parseInt(txtGymQuantity.getText()));
+            gym.setDiscountCountFromTextField(txtDiscountGym.getText());
             selectedServices.add(gym);
         }
 
@@ -282,6 +291,7 @@ public class RoomSelectionForm extends javax.swing.JFrame {
             Services footSpa = services.get(2);
             footSpa.setSelected(true);
             footSpa.setQuantity(Integer.parseInt(txtFSQuantity.getText()));
+            footSpa.setDiscountCountFromTextField(txtDiscountFSpa.getText());
             selectedServices.add(footSpa);
         }
 
@@ -289,6 +299,7 @@ public class RoomSelectionForm extends javax.swing.JFrame {
             Services aromaMassage = services.get(3);
             aromaMassage.setSelected(true);
             aromaMassage.setQuantity(Integer.parseInt(txtAFMQuantity.getText()));
+            aromaMassage.setDiscountCountFromTextField(txtFMassage.getText());
             selectedServices.add(aromaMassage);
         }
 
@@ -296,12 +307,12 @@ public class RoomSelectionForm extends javax.swing.JFrame {
             Services thaiMassage = services.get(4);
             thaiMassage.setSelected(true);
             thaiMassage.setQuantity(Integer.parseInt(txtTMQuantity.getText()));
+            thaiMassage.setDiscountCountFromTextField(txtTMassage.getText());
             selectedServices.add(thaiMassage);
         }
 
         return selectedServices;
     }
-
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -336,6 +347,11 @@ public class RoomSelectionForm extends javax.swing.JFrame {
         txtBlanketQuantity = new javax.swing.JTextField();
         txtPillowsQuantity = new javax.swing.JTextField();
         txtToiletriesQuantity = new javax.swing.JTextField();
+        jLabel21 = new javax.swing.JLabel();
+        txtDiscountBed = new javax.swing.JTextField();
+        txtDiscountBlanket = new javax.swing.JTextField();
+        txtDiscountPillow = new javax.swing.JTextField();
+        txtDiscountToiletry = new javax.swing.JTextField();
         ServicesPanel = new javax.swing.JPanel();
         jLabel11 = new javax.swing.JLabel();
         cbSwimmingPool = new javax.swing.JCheckBox();
@@ -357,6 +373,13 @@ public class RoomSelectionForm extends javax.swing.JFrame {
         txtFSQuantity = new javax.swing.JTextField();
         txtAFMQuantity = new javax.swing.JTextField();
         txtTMQuantity = new javax.swing.JTextField();
+        jLabel22 = new javax.swing.JLabel();
+        txtDiscountPool = new javax.swing.JTextField();
+        txtDiscountGym = new javax.swing.JTextField();
+        txtDiscountFSpa = new javax.swing.JTextField();
+        txtFMassage = new javax.swing.JTextField();
+        txtTMassage = new javax.swing.JTextField();
+        btnNext = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
 
@@ -423,11 +446,11 @@ public class RoomSelectionForm extends javax.swing.JFrame {
                     .addComponent(jLabel1)
                     .addComponent(jLabel2)
                     .addComponent(cmbAvailAddons, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(cmbAvailServices, javax.swing.GroupLayout.PREFERRED_SIZE, 189, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel3))
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addContainerGap())
         );
         jPanel1Layout.setVerticalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -470,6 +493,8 @@ public class RoomSelectionForm extends javax.swing.JFrame {
 
         jLabel10.setText("Quantity");
 
+        jLabel21.setText("# of PWD/Senior Citizen");
+
         javax.swing.GroupLayout AddonPanelLayout = new javax.swing.GroupLayout(AddonPanel);
         AddonPanel.setLayout(AddonPanelLayout);
         AddonPanelLayout.setHorizontalGroup(
@@ -482,59 +507,77 @@ public class RoomSelectionForm extends javax.swing.JFrame {
                     .addComponent(cbBlanket)
                     .addComponent(cbPillows)
                     .addComponent(cbToiletries))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 71, Short.MAX_VALUE)
+                .addGap(42, 42, 42)
                 .addGroup(AddonPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(jLabel6)
                     .addComponent(jLabel9)
                     .addComponent(jLabel8)
                     .addComponent(jLabel7)
-                    .addGroup(AddonPanelLayout.createSequentialGroup()
-                        .addComponent(jLabel5)
-                        .addGap(70, 70, 70)))
+                    .addComponent(jLabel5))
+                .addGap(18, 18, 18)
                 .addGroup(AddonPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(AddonPanelLayout.createSequentialGroup()
-                        .addGap(61, 61, 61)
-                        .addComponent(jLabel10))
-                    .addGroup(AddonPanelLayout.createSequentialGroup()
-                        .addGap(43, 43, 43)
-                        .addComponent(txtToiletriesQuantity, javax.swing.GroupLayout.PREFERRED_SIZE, 73, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, AddonPanelLayout.createSequentialGroup()
-                        .addGap(43, 43, 43)
-                        .addGroup(AddonPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(txtBlanketQuantity, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 73, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(txtPillowsQuantity, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 73, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(txtBedQuantity, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 73, javax.swing.GroupLayout.PREFERRED_SIZE))))
-                .addGap(45, 45, 45))
+                    .addGroup(AddonPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addComponent(txtToiletriesQuantity, javax.swing.GroupLayout.PREFERRED_SIZE, 73, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(txtBlanketQuantity, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 73, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(txtPillowsQuantity, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 73, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(txtBedQuantity, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 73, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(jLabel10))
+                .addGap(18, 18, 18)
+                .addGroup(AddonPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jLabel21)
+                    .addGroup(AddonPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                        .addComponent(txtDiscountToiletry, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 72, Short.MAX_VALUE)
+                        .addComponent(txtDiscountPillow, javax.swing.GroupLayout.Alignment.LEADING)
+                        .addComponent(txtDiscountBlanket, javax.swing.GroupLayout.Alignment.LEADING)
+                        .addComponent(txtDiscountBed, javax.swing.GroupLayout.Alignment.LEADING)))
+                .addContainerGap(16, Short.MAX_VALUE))
         );
         AddonPanelLayout.setVerticalGroup(
             AddonPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(AddonPanelLayout.createSequentialGroup()
                 .addGap(8, 8, 8)
-                .addGroup(AddonPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel4)
-                    .addComponent(jLabel5)
-                    .addComponent(jLabel10))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(AddonPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(cbBed)
-                    .addComponent(jLabel6)
-                    .addComponent(txtBedQuantity, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(AddonPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(cbBlanket)
-                    .addComponent(jLabel7)
-                    .addComponent(txtBlanketQuantity, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(AddonPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(cbPillows)
-                    .addComponent(jLabel8)
-                    .addComponent(txtPillowsQuantity, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(AddonPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(cbToiletries)
-                    .addComponent(jLabel9)
-                    .addComponent(txtToiletriesQuantity, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addGroup(AddonPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(AddonPanelLayout.createSequentialGroup()
+                        .addGroup(AddonPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(jLabel10)
+                            .addComponent(jLabel21))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(AddonPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(txtBedQuantity, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(txtDiscountBed, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(AddonPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(txtBlanketQuantity, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(txtDiscountBlanket, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(AddonPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(txtPillowsQuantity, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(txtDiscountPillow, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(AddonPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(txtToiletriesQuantity, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(txtDiscountToiletry, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                    .addGroup(AddonPanelLayout.createSequentialGroup()
+                        .addGroup(AddonPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(jLabel4)
+                            .addComponent(jLabel5))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(AddonPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(cbBed)
+                            .addComponent(jLabel6))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(AddonPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(cbBlanket)
+                            .addComponent(jLabel7))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(AddonPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(cbPillows)
+                            .addComponent(jLabel8))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(AddonPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(cbToiletries)
+                            .addComponent(jLabel9))))
+                .addContainerGap(43, Short.MAX_VALUE))
         );
 
         ServicesPanel.setBorder(javax.swing.BorderFactory.createEtchedBorder());
@@ -575,6 +618,20 @@ public class RoomSelectionForm extends javax.swing.JFrame {
             }
         });
 
+        jLabel22.setText("# of PWD/Senior Citizen");
+
+        txtDiscountGym.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                txtDiscountGymActionPerformed(evt);
+            }
+        });
+
+        txtTMassage.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                txtTMassageActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout ServicesPanelLayout = new javax.swing.GroupLayout(ServicesPanel);
         ServicesPanel.setLayout(ServicesPanelLayout);
         ServicesPanelLayout.setHorizontalGroup(
@@ -598,22 +655,32 @@ public class RoomSelectionForm extends javax.swing.JFrame {
                     .addComponent(jLabel16)
                     .addComponent(jLabel15)
                     .addComponent(jLabel14)
-                    .addGroup(ServicesPanelLayout.createSequentialGroup()
-                        .addComponent(jLabel13)
-                        .addGap(125, 125, 125))
+                    .addComponent(jLabel13)
                     .addComponent(jLabel18)
                     .addComponent(jLabel19))
                 .addGap(10, 10, 10)
                 .addGroup(ServicesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(txtSPQuantity, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, 74, Short.MAX_VALUE)
-                    .addComponent(txtGymQuantity, javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, ServicesPanelLayout.createSequentialGroup()
-                        .addGap(0, 0, Short.MAX_VALUE)
-                        .addComponent(jLabel20))
-                    .addComponent(txtFSQuantity, javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(txtAFMQuantity, javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(txtTMQuantity))
-                .addContainerGap())
+                    .addGroup(ServicesPanelLayout.createSequentialGroup()
+                        .addGroup(ServicesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                            .addComponent(txtAFMQuantity)
+                            .addComponent(txtTMQuantity, javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addComponent(txtSPQuantity, javax.swing.GroupLayout.DEFAULT_SIZE, 70, Short.MAX_VALUE)
+                            .addComponent(txtGymQuantity)
+                            .addComponent(txtFSQuantity))
+                        .addGap(18, 18, 18)
+                        .addGroup(ServicesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(ServicesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                .addComponent(txtDiscountPool)
+                                .addComponent(txtDiscountGym)
+                                .addComponent(txtFMassage)
+                                .addComponent(txtTMassage, javax.swing.GroupLayout.PREFERRED_SIZE, 72, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addComponent(txtDiscountFSpa, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 72, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addContainerGap())
+                    .addGroup(ServicesPanelLayout.createSequentialGroup()
+                        .addComponent(jLabel20)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(jLabel22)
+                        .addGap(18, 18, 18))))
         );
         ServicesPanelLayout.setVerticalGroup(
             ServicesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -622,38 +689,58 @@ public class RoomSelectionForm extends javax.swing.JFrame {
                 .addGroup(ServicesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel11)
                     .addComponent(jLabel13)
-                    .addComponent(jLabel20))
+                    .addComponent(jLabel20)
+                    .addComponent(jLabel22, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(ServicesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(cbSwimmingPool)
-                    .addComponent(jLabel14)
-                    .addComponent(txtSPQuantity, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(ServicesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(cbGym)
-                    .addComponent(jLabel15)
-                    .addComponent(txtGymQuantity, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(ServicesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel12)
-                    .addComponent(jLabel16))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(ServicesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(cbFootSpa)
-                    .addComponent(jLabel17)
-                    .addComponent(txtFSQuantity, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(ServicesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(cbAFMassage)
-                    .addComponent(jLabel18)
-                    .addComponent(txtAFMQuantity, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(ServicesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(cbThaiMassage)
-                    .addComponent(jLabel19)
-                    .addComponent(txtTMQuantity, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(15, Short.MAX_VALUE))
+                .addGroup(ServicesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addGroup(ServicesPanelLayout.createSequentialGroup()
+                        .addGroup(ServicesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(cbSwimmingPool)
+                            .addComponent(jLabel14)
+                            .addComponent(txtSPQuantity, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(ServicesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(cbGym)
+                            .addComponent(jLabel15)
+                            .addComponent(txtGymQuantity, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(ServicesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(jLabel12)
+                            .addComponent(jLabel16))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(ServicesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(cbFootSpa)
+                            .addComponent(jLabel17)
+                            .addComponent(txtFSQuantity, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(ServicesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(cbAFMassage)
+                            .addComponent(jLabel18)
+                            .addComponent(txtAFMQuantity, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(ServicesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(cbThaiMassage)
+                            .addComponent(jLabel19)
+                            .addComponent(txtTMQuantity, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                    .addGroup(ServicesPanelLayout.createSequentialGroup()
+                        .addComponent(txtDiscountPool, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(txtDiscountGym, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(28, 28, 28)
+                        .addComponent(txtDiscountFSpa, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(txtFMassage, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(txtTMassage, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                .addGap(15, 15, 15))
         );
+
+        btnNext.setText("NEXT");
+        btnNext.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnNextActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
@@ -665,10 +752,16 @@ public class RoomSelectionForm extends javax.swing.JFrame {
                     .addComponent(jScrollPane1)
                     .addGroup(layout.createSequentialGroup()
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                            .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(AddonPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(ServicesPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
+                            .addComponent(AddonPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(layout.createSequentialGroup()
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(ServicesPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                            .addGroup(layout.createSequentialGroup()
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addComponent(btnNext, javax.swing.GroupLayout.PREFERRED_SIZE, 121, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGap(87, 87, 87)))))
                 .addContainerGap())
         );
         layout.setVerticalGroup(
@@ -676,16 +769,17 @@ public class RoomSelectionForm extends javax.swing.JFrame {
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
                 .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 128, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(layout.createSequentialGroup()
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addGap(10, 10, 10)
                         .addComponent(AddonPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addGroup(layout.createSequentialGroup()
                         .addComponent(ServicesPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(119, 119, 119)))
+                        .addGap(27, 27, 27)
+                        .addComponent(btnNext, javax.swing.GroupLayout.PREFERRED_SIZE, 52, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
                 .addContainerGap())
         );
 
@@ -716,6 +810,65 @@ public class RoomSelectionForm extends javax.swing.JFrame {
             clearServiceSelections();
         }
     }//GEN-LAST:event_cmbAvailServicesActionPerformed
+
+    private void txtDiscountGymActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtDiscountGymActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_txtDiscountGymActionPerformed
+
+    private void txtTMassageActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtTMassageActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_txtTMassageActionPerformed
+
+    private void btnNextActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnNextActionPerformed
+        // TODO add your handling code here:
+    if (validateForm()) {
+        try {
+            // Check if booking object exists
+            if (booking == null) {
+                JOptionPane.showMessageDialog(this, 
+                    "Booking information not found. Please go back and try again.", 
+                    "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            
+            // Save to database
+            BookingDAO dao = new BookingDAO();
+            int bookingId = dao.saveBooking(booking);
+            
+            // Save addons and services
+            List<Addon> selectedAddons = getSelectedAddons();
+            List<Services> selectedServices = getSelectedServices();
+            
+            if (!selectedAddons.isEmpty()) {
+                dao.saveBookingAddons(bookingId, selectedAddons);
+            }
+            if (!selectedServices.isEmpty()) {
+                dao.saveBookingServices(bookingId, selectedServices);
+            }
+            
+            // Show success message
+            JOptionPane.showMessageDialog(this, 
+                "Booking saved successfully!\nBooking ID: " + bookingId +
+                "\nTotal Guests: " + totalGuests +
+                "\nNights: " + nightsStay,
+                "Booking Confirmed", JOptionPane.INFORMATION_MESSAGE);
+            
+            // Proceed to summary
+            openSummaryForm();
+            
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, 
+                "Error saving booking to database: " + e.getMessage(), 
+                "Database Error", JOptionPane.ERROR_MESSAGE);
+            e.printStackTrace();
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, 
+                "Unexpected error: " + e.getMessage(), 
+                "Error", JOptionPane.ERROR_MESSAGE);
+            e.printStackTrace();
+        }
+    }
+    }//GEN-LAST:event_btnNextActionPerformed
 
     /**
      * @param args the command line arguments
@@ -755,6 +908,7 @@ public class RoomSelectionForm extends javax.swing.JFrame {
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel AddonPanel;
     private javax.swing.JPanel ServicesPanel;
+    private javax.swing.JButton btnNext;
     private javax.swing.JCheckBox cbAFMassage;
     private javax.swing.JCheckBox cbBed;
     private javax.swing.JCheckBox cbBlanket;
@@ -780,6 +934,8 @@ public class RoomSelectionForm extends javax.swing.JFrame {
     private javax.swing.JLabel jLabel19;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel20;
+    private javax.swing.JLabel jLabel21;
+    private javax.swing.JLabel jLabel22;
     private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel4;
     private javax.swing.JLabel jLabel5;
@@ -793,11 +949,20 @@ public class RoomSelectionForm extends javax.swing.JFrame {
     private javax.swing.JTextField txtAFMQuantity;
     private javax.swing.JTextField txtBedQuantity;
     private javax.swing.JTextField txtBlanketQuantity;
+    private javax.swing.JTextField txtDiscountBed;
+    private javax.swing.JTextField txtDiscountBlanket;
+    private javax.swing.JTextField txtDiscountFSpa;
+    private javax.swing.JTextField txtDiscountGym;
+    private javax.swing.JTextField txtDiscountPillow;
+    private javax.swing.JTextField txtDiscountPool;
+    private javax.swing.JTextField txtDiscountToiletry;
+    private javax.swing.JTextField txtFMassage;
     private javax.swing.JTextField txtFSQuantity;
     private javax.swing.JTextField txtGymQuantity;
     private javax.swing.JTextField txtPillowsQuantity;
     private javax.swing.JTextField txtSPQuantity;
     private javax.swing.JTextField txtTMQuantity;
+    private javax.swing.JTextField txtTMassage;
     private javax.swing.JTextField txtToiletriesQuantity;
     // End of variables declaration//GEN-END:variables
 }

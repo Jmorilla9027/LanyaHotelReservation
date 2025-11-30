@@ -1,5 +1,7 @@
 package com.mycompany.lanyastarhotelreservation.model;
 
+import com.DAO.BookingDAO;
+import java.sql.*;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
@@ -39,7 +41,11 @@ public class Booking {
         this.numberOfChildren = numberOfChildren;
         this.childrenAges = childrenAges != null ? childrenAges : new ArrayList<>();
     }
-
+    
+    public int saveToDatabase() throws SQLException {
+        BookingDAO dao = new BookingDAO();
+        return dao.saveBooking(this);
+    }
     // Validation Methods
     public List<String> validate() {
         List<String> errors = new ArrayList<>();

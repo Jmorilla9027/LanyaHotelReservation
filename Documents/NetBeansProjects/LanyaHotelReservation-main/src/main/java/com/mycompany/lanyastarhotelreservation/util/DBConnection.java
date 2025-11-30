@@ -12,7 +12,7 @@ import java.sql.SQLException;
  * @author johnm
  */
 public class DBConnection {
-    private static final String URL = "jdbc:mysql://localhost:3306/gmotu_hotel_db";
+    private static final String URL = "jdbc:mysql://localhost:3306/lanya_gmotu_reservation";
     private static final String USER = "root";
     private static final String PASSWORD = ""; // XAMPP default
 

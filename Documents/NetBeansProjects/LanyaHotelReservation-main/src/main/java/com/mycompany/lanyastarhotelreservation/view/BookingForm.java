@@ -532,34 +532,24 @@ private Booking collectFormData() {
     return booking;
 }
 
-private void openRoomSelectionForm(Booking booking) {
-    try {
-        // Create and configure the RoomSelectionForm
-        RoomSelectionForm roomForm = new RoomSelectionForm();
-        
-        // Pass the booking data to the room selection form
-        roomForm.setBookingDetails(
-            booking.calculatePayingGuests(), // Total paying guests
-            booking.calculateNights()        // Number of nights
-        );
-        
-        // Center the new form on screen
-        roomForm.setLocationRelativeTo(null);
-        
-        // Make the new form visible
-        roomForm.setVisible(true);
-        
-        // Optional: Close the current booking form
-        // this.dispose();
-        
-        System.out.println("Successfully opened RoomSelectionForm");
-        System.out.println("Guests: " + booking.calculatePayingGuests() + ", Nights: " + booking.calculateNights());
-        
-    } catch (Exception e) {
-        e.printStackTrace();
-        showError("Error opening room selection: " + e.getMessage());
+    private void openRoomSelectionForm(Booking booking) {
+        try {
+            RoomSelectionForm roomForm = new RoomSelectionForm();
+
+            // Pass the Booking object using the new method
+            roomForm.setBooking(booking);
+
+            roomForm.setLocationRelativeTo(null);
+            roomForm.setVisible(true);
+
+            // Close current form if needed
+            // this.dispose();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            showError("Error opening room selection: " + e.getMessage());
+        }
     }
-}
 
 // Keep your existing helper methods
 private LocalDate parseDate(String dateText) throws DateTimeParseException {
