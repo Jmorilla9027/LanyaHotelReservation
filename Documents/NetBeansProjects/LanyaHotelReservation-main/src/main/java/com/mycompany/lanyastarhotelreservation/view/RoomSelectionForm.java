@@ -123,9 +123,16 @@ public class RoomSelectionForm extends javax.swing.JFrame {
         this.totalGuests = booking.calculatePayingGuests();
         this.nightsStay = booking.calculateNights();
         this.numAdults = booking.getNumberOfAdults();
+
+        // Add null check for destinationType
         this.destinationType = booking.getDestinationType();
+        if (this.destinationType == null) {
+            System.err.println("ERROR: destinationType is null from booking object");
+            this.destinationType = "Local"; // Default to Local
+        }
+
         this.season = determineSeason(booking.getCheckInDate());
-        
+
         updateValidationLimits();
         loadRoomsFromDatabase();
     }
@@ -1116,62 +1123,70 @@ public class RoomSelectionForm extends javax.swing.JFrame {
     private void btnNextActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnNextActionPerformed
         // TODO add your handling code here:
     if (validateForm()) {
-            try {
-                String selectedRoomType = (String) cmbRoomType.getSelectedItem();
-                if (selectedRoomType == null || selectedRoomType.equals("--Select Room Type--")) {
-                    JOptionPane.showMessageDialog(this, "Please select a room type", "Validation Error", JOptionPane.ERROR_MESSAGE);
-                    return;
-                }
-                
-                // Update room availability
-                boolean roomUpdated = roomDAO.updateRoomAvailability(selectedRoomType);
-                if (!roomUpdated) {
-                    JOptionPane.showMessageDialog(this, 
-                        "Room no longer available. Please choose another.",
-                        "Room Not Available", JOptionPane.WARNING_MESSAGE);
-                    loadRoomsFromDatabase();
-                    return;
-                }
-                
-                // Get room details for confirmation
-                Room selectedRoom = roomDAO.getRoomByType(selectedRoomType);
-                double roomPrice = selectedRoom.getPrice(destinationType, season);
-                
-                // Save booking (your existing code)
-                BookingDAO bookingDAO = new BookingDAO();
-                int bookingId = bookingDAO.saveBooking(booking);
-                
-                // Save addons and services
-                List<Addon> selectedAddons = getSelectedAddons();
-                List<Services> selectedServices = getSelectedServices();
-                
-                if (!selectedAddons.isEmpty()) {
-                    bookingDAO.saveBookingAddons(bookingId, selectedAddons);
-                }
-                if (!selectedServices.isEmpty()) {
-                    bookingDAO.saveBookingServices(bookingId, selectedServices);
-                }
-                
-                // Show confirmation with room details
-                JOptionPane.showMessageDialog(this, 
-                    "✅ BOOKING CONFIRMED!\n\n" +
-                    "Booking ID: " + bookingId + "\n" +
-                    "Room: " + selectedRoomType + "\n" +
-                    "Price: " + String.format("P %,.2f", roomPrice) + " (" + season + " Season)\n" +
-                    "Destination: " + destinationType + "\n" +
-                    "Guests: " + totalGuests + "\n" +
-                    "Nights: " + nightsStay,
-                    "Booking Confirmed", JOptionPane.INFORMATION_MESSAGE);
-                
-                openSummaryForm();
-                
-            } catch (SQLException e) {
-                JOptionPane.showMessageDialog(this, 
-                    "Database Error: " + e.getMessage(), 
-                    "Save Failed", JOptionPane.ERROR_MESSAGE);
-                e.printStackTrace();
-            }
+    try {
+        String selectedRoomType = (String) cmbRoomType.getSelectedItem();
+        if (selectedRoomType == null || selectedRoomType.equals("--Select Room Type--")) {
+            JOptionPane.showMessageDialog(this, "Please select a room type", "Validation Error", JOptionPane.ERROR_MESSAGE);
+            return;
         }
+        
+        // Update room availability - FIXED: removed duplicate variable declaration
+        boolean roomUpdated = roomDAO.updateRoomAvailability(selectedRoomType, destinationType);
+        if (!roomUpdated) {
+            JOptionPane.showMessageDialog(this, 
+                "Room no longer available. Please choose another.",
+                "Room Not Available", JOptionPane.WARNING_MESSAGE);
+            loadRoomsFromDatabase();
+            return;
+        }
+        
+        // Get room details for confirmation - FIXED: added destinationType parameter
+        Room selectedRoom = roomDAO.getRoomByType(selectedRoomType, destinationType);
+        
+        if (selectedRoom == null) {
+            JOptionPane.showMessageDialog(this, 
+                "Room not found. Please select another room.",
+                "Room Not Found", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        
+        double roomPrice = selectedRoom.getPrice(destinationType, season);
+        
+        // Save booking (your existing code)
+        BookingDAO bookingDAO = new BookingDAO();
+        int bookingId = bookingDAO.saveBooking(booking);
+        
+        // Save addons and services
+        List<Addon> selectedAddons = getSelectedAddons();
+        List<Services> selectedServices = getSelectedServices();
+        
+        if (!selectedAddons.isEmpty()) {
+            bookingDAO.saveBookingAddons(bookingId, selectedAddons);
+        }
+        if (!selectedServices.isEmpty()) {
+            bookingDAO.saveBookingServices(bookingId, selectedServices);
+        }
+        
+        // Show confirmation with room details
+        JOptionPane.showMessageDialog(this, 
+            "✅ BOOKING CONFIRMED!\n\n" +
+            "Booking ID: " + bookingId + "\n" +
+            "Room: " + selectedRoomType + "\n" +
+            "Price: " + String.format("P %,.2f", roomPrice) + " (" + season + " Season)\n" +
+            "Destination: " + destinationType + "\n" +
+            "Guests: " + totalGuests + "\n" +
+            "Nights: " + nightsStay,
+            "Booking Confirmed", JOptionPane.INFORMATION_MESSAGE);
+        
+        openSummaryForm();
+        
+    } catch (SQLException e) {
+        JOptionPane.showMessageDialog(this, 
+            "Database Error: " + e.getMessage(), 
+            "Save Failed", JOptionPane.ERROR_MESSAGE);
+        e.printStackTrace();
+    }
+}
     }//GEN-LAST:event_btnNextActionPerformed
 
     /**

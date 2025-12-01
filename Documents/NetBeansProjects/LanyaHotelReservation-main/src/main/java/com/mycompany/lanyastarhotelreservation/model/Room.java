@@ -10,12 +10,11 @@ public class Room {
     private int capacity;
     private int extraBedCount;
     private int availableRooms;
-    private double extraBedPrice;
     private double localLeanPrice, localHighPrice, localPeakPrice, localSuperPeakPrice;
     private double internationalLeanPrice, internationalHighPrice, internationalPeakPrice, internationalSuperPeakPrice;
 
     public double getPrice(String destinationType, String season) {
-        if ("International".equals(destinationType)) {
+        if ("International".equalsIgnoreCase(destinationType)) {
             switch (season) {
                 case "Lean": return internationalLeanPrice;
                 case "High": return internationalHighPrice;
@@ -45,8 +44,6 @@ public class Room {
     public void setExtraBedCount(int extraBedCount) { this.extraBedCount = extraBedCount; }
     public int getAvailableRooms() { return availableRooms; }
     public void setAvailableRooms(int availableRooms) { this.availableRooms = availableRooms; }
-    public double getExtraBedPrice() { return extraBedPrice; }
-    public void setExtraBedPrice(double extraBedPrice) { this.extraBedPrice = extraBedPrice; }
     public double getLocalLeanPrice() { return localLeanPrice; }
     public void setLocalLeanPrice(double localLeanPrice) { this.localLeanPrice = localLeanPrice; }
     public double getLocalHighPrice() { return localHighPrice; }
