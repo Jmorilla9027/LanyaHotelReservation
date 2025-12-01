@@ -9,6 +9,8 @@ import com.mycompany.lanyastarhotelreservation.model.Booking;
 import com.mycompany.lanyastarhotelreservation.model.Room;
 import com.DAO.BookingDAO;
 import com.DAO.RoomDAO;
+import com.DAO.AddonDAO;
+import com.DAO.ServicesDAO;
 import java.util.ArrayList;
 import java.util.List;
 import javax.swing.JOptionPane;
@@ -22,6 +24,8 @@ import java.time.LocalDate;
 public class RoomSelectionForm extends javax.swing.JFrame {
     private List<Addon> addons;
     private List<Services> services;
+    private AddonDAO addonDAO;
+    private ServicesDAO servicesDAO;
     private int totalGuests;
     private int nightsStay;
     private int numAdults; 
@@ -34,38 +38,84 @@ public class RoomSelectionForm extends javax.swing.JFrame {
      */
     public RoomSelectionForm() {
         initComponents();
+        this.roomDAO = new RoomDAO();
+        this.addonDAO = new AddonDAO();
+        this.servicesDAO = new ServicesDAO();
         initializeModels();
         initializeForm();
-        this.roomDAO = new RoomDAO();
     }
     private void initializeModels() {
-        // Initialize addons
-        addons = new ArrayList<>();
-        addons.add(new Addon("Bed", 650.00, "Extra bed per night"));
-        addons.add(new Addon("Blanket", 250.00, "Additional blanket"));
-        addons.add(new Addon("Pillows", 100.00, "Extra pillows"));
-        addons.add(new Addon("Toiletries", 200.00, "Toiletries set"));
-
-        // Initialize services
-        services = new ArrayList<>();
-        services.add(new Services("Swimming Pool", 300.00, "Daily access", "per day per person"));
-        services.add(new Services("Gym", 500.00, "Fitness center access", "per day per person"));
-        services.add(new Services("Foot Spa", 825.00, "Relaxing foot treatment", "45 minutes"));
-        services.add(new Services("Aroma Facial Massage", 1045.00, "Aromatherapy facial massage", "45 minutes"));
-        services.add(new Services("Thai Massage", 1540.00, "Traditional Thai massage", "75 minutes"));
+        // Load addons from database
+        addons = addonDAO.getAllAddons();
+        
+        // Load services from database
+        services = servicesDAO.getAllServices();
+        
+        // Debug to see what's loaded
+        System.out.println("Loaded " + addons.size() + " addons from database");
+        System.out.println("Loaded " + services.size() + " services from database");
     }
 
-     private void initializeForm() {
+    private void initializeForm() {
         cmbAvailAddons.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "--Select--", "Yes", "No" }));
         cmbAvailServices.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "--Select--", "Yes", "No" }));
 
         AddonPanel.setVisible(false);
         ServicesPanel.setVisible(false);
-        jLabel8.setText("Php 100.00");
-
+        
+        // Update labels based on loaded data
+        updateAddonLabels();
+        updateServiceLabels();
+        
         cmbRoomType.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { 
             "--Select Room Type--", "Standard", "Deluxe", "Quadruple", "Family", "Suite" 
         }));
+    }
+    
+        private void updateAddonLabels() {
+        if (!addons.isEmpty()) {
+            // Find each addon and update its label
+            for (Addon addon : addons) {
+                switch (addon.getName()) {
+                    case "Bed":
+                        jLabel6.setText(String.format("Php %.2f/%s", addon.getRate(), addon.getUnit()));
+                        break;
+                    case "Blanket":
+                        jLabel7.setText(String.format("Php %.2f", addon.getRate()));
+                        break;
+                    case "Pillows":
+                        jLabel8.setText(String.format("Php %.2f", addon.getRate()));
+                        break;
+                    case "Toiletries":
+                        jLabel9.setText(String.format("Php %.2f/%s", addon.getRate(), addon.getUnit()));
+                        break;
+                }
+            }
+        }
+    }
+
+    private void updateServiceLabels() {
+        if (!services.isEmpty()) {
+            for (Services service : services) {
+                switch (service.getName()) {
+                    case "Swimming Pool":
+                        jLabel14.setText(String.format("Php %.2f %s", service.getRate(), service.getPricingUnit()));
+                        break;
+                    case "Gym":
+                        jLabel15.setText(String.format("Php %.2f %s", service.getRate(), service.getPricingUnit()));
+                        break;
+                    case "Foot Spa":
+                        jLabel17.setText(String.format("Php %.2f for %s", service.getRate(), service.getDuration()));
+                        break;
+                    case "Aroma Facial Massage":
+                        jLabel18.setText(String.format("Php %.2f for %s", service.getRate(), service.getDuration()));
+                        break;
+                    case "Thai Massage":
+                        jLabel19.setText(String.format("Php %.2f for %s", service.getRate(), service.getDuration()));
+                        break;
+                }
+            }
+        }
     }
      
     public void setBooking(Booking booking) {
@@ -109,7 +159,7 @@ public class RoomSelectionForm extends javax.swing.JFrame {
             // Determine room status
             String status;
             if (room.getCapacity() >= totalGuests) {
-                status = "Perfect Fit ✅";
+                status = "Perfect Fit ";
             } else {
                 int extraBedsNeeded = totalGuests - room.getCapacity();
                 status = "Needs " + extraBedsNeeded + " extra bed(s)";
@@ -213,52 +263,62 @@ public class RoomSelectionForm extends javax.swing.JFrame {
     
     
     private void updateValidationLimits() {
-        // Services already have their max quantity calculation
+        // For services that need max quantity validation
         for (Services service : services) {
-            service.calculateMaxQuantity(totalGuests, nightsStay);
+            if (service.requiresDaysInput()) {
+                // For daily services, max quantity is guests × nights
+                service.setMaxQuantity(totalGuests * nightsStay);
+            } else {
+                // For spa services, max quantity is total guests
+                service.setMaxQuantity(totalGuests);
+            }
         }
-        // Addons will be validated in validateAddonQuantity method
     }
-    // Validation methods that delegate to model
     public boolean validateForm() {
         List<String> errors = new ArrayList<>();
-        
+
         // Validate room selection
         if (cmbRoomType.getSelectedIndex() == 0) {
             errors.add("Please select a room type");
         }
-        
+
+        // Validate quantities are entered for selected items
+        String quantityValidation = validateQuantitiesNotEmpty();
+        if (!"VALID".equals(quantityValidation)) {
+            errors.add(quantityValidation);
+        }
+
         // Validate addons if panel is visible
         if (AddonPanel.isVisible()) {
             String addonValidation = validateAddons();
             if (!"VALID".equals(addonValidation)) {
                 errors.add(addonValidation);
             }
-            
+
             String addonDiscountValidation = validateAddonDiscounts();
             if (!"VALID".equals(addonDiscountValidation)) {
                 errors.add(addonDiscountValidation);
             }
         }
-        
+
         // Validate services if panel is visible
         if (ServicesPanel.isVisible()) {
             String serviceValidation = validateServices();
             if (!"VALID".equals(serviceValidation)) {
                 errors.add(serviceValidation);
             }
-            
+
             String serviceDiscountValidation = validateServiceDiscounts();
             if (!"VALID".equals(serviceDiscountValidation)) {
                 errors.add(serviceDiscountValidation);
             }
         }
-        
+
         if (!errors.isEmpty()) {
             showValidationErrors(errors);
             return false;
         }
-        
+
         return true;
     }
     //New Validation for discounts
@@ -298,13 +358,61 @@ public class RoomSelectionForm extends javax.swing.JFrame {
         List<Addon> selectedAddons = getSelectedAddons();
 
         for (Addon addon : selectedAddons) {
-            // Use the model's validation instead of duplicate method
             String validation = addon.validateQuantity(totalGuests, nightsStay);
             if (!"VALID".equals(validation)) {
                 if (errors.length() > 0) errors.append("\n");
                 errors.append(validation);
             }
+
+            // Additional validation for bed limits
+            if ("Bed".equals(addon.getName())) {
+                if (addon.getQuantity() > totalGuests) {
+                    if (errors.length() > 0) errors.append("\n");
+                    errors.append("Number of beds cannot exceed number of paying guests (" + totalGuests + ")");
+                }
+            }
         }
+        return errors.length() == 0 ? "VALID" : errors.toString();
+    }
+    
+    private String validateQuantitiesNotEmpty() {
+        StringBuilder errors = new StringBuilder();
+
+        // Check addons
+        if (AddonPanel.isVisible()) {
+            if (cbBed.isSelected() && txtBedQuantity.getText().trim().isEmpty()) {
+                errors.append("Please enter quantity for Bed\n");
+            }
+            if (cbBlanket.isSelected() && txtBlanketQuantity.getText().trim().isEmpty()) {
+                errors.append("Please enter quantity for Blanket\n");
+            }
+            if (cbPillows.isSelected() && txtPillowsQuantity.getText().trim().isEmpty()) {
+                errors.append("Please enter quantity for Pillows\n");
+            }
+            if (cbToiletries.isSelected() && txtToiletriesQuantity.getText().trim().isEmpty()) {
+                errors.append("Please enter quantity for Toiletries\n");
+            }
+        }
+
+        // Check services
+        if (ServicesPanel.isVisible()) {
+            if (cbSwimmingPool.isSelected() && txtSPQuantity.getText().trim().isEmpty()) {
+                errors.append("Please enter quantity for Swimming Pool\n");
+            }
+            if (cbGym.isSelected() && txtGymQuantity.getText().trim().isEmpty()) {
+                errors.append("Please enter quantity for Gym\n");
+            }
+            if (cbFootSpa.isSelected() && txtFSQuantity.getText().trim().isEmpty()) {
+                errors.append("Please enter quantity for Foot Spa\n");
+            }
+            if (cbAFMassage.isSelected() && txtAFMQuantity.getText().trim().isEmpty()) {
+                errors.append("Please enter quantity for Aroma Facial Massage\n");
+            }
+            if (cbThaiMassage.isSelected() && txtTMQuantity.getText().trim().isEmpty()) {
+                errors.append("Please enter quantity for Thai Massage\n");
+            }
+        }
+
         return errors.length() == 0 ? "VALID" : errors.toString();
     }
     
@@ -320,18 +428,24 @@ public class RoomSelectionForm extends javax.swing.JFrame {
                 if (errors.length() > 0) errors.append("\n");
                 errors.append(validation);
             }
-        }
 
+            // Additional validation for daily services - days shouldn't exceed nights stay
+            if (service.requiresDaysInput()) {
+                // For daily services, quantity represents guests, not days
+                int serviceDays = nightsStay; // Assuming they want it for all days
+                if (serviceDays > nightsStay) {
+                    if (errors.length() > 0) errors.append("\n");
+                    errors.append(service.getName() + " cannot be availed for more days than your stay (" + nightsStay + " nights)");
+                }
+            }
+        }
         return errors.length() == 0 ? "VALID" : errors.toString();
     }
     
     private int getServiceDays(Services service) {
-        // For daily services, you might want to add day input fields
-        // For now, assuming they want the service for all days
         if (service.requiresDaysInput()) {
-            return nightsStay; // Default to all days
         }
-        return 0;
+        return 1; // For spa services, it's per session (not daily)
     }
     
     private void showValidationErrors(List<String> errors) {
@@ -372,88 +486,126 @@ public class RoomSelectionForm extends javax.swing.JFrame {
         JOptionPane.showMessageDialog(this, "Proceeding to summary...");
     }
     
-    public List<Addon> getSelectedAddons() {
-        List<Addon> selectedAddons = new ArrayList<>();
+ public List<Addon> getSelectedAddons() {
+    List<Addon> selectedAddons = new ArrayList<>();
 
-        if (cbBed.isSelected() && !txtBedQuantity.getText().isEmpty()) {
-            Addon bed = addons.get(0);
+    if (cbBed.isSelected() && !txtBedQuantity.getText().isEmpty()) {
+        Addon bed = findAddonByName("Bed");
+        if (bed != null) {
             bed.setSelected(true);
             bed.setQuantity(Integer.parseInt(txtBedQuantity.getText()));
             bed.setDiscountCountFromTextField(txtDiscountBed.getText());
             selectedAddons.add(bed);
         }
+    }
 
-        if (cbBlanket.isSelected() && !txtBlanketQuantity.getText().isEmpty()) {
-            Addon blanket = addons.get(1);
+    if (cbBlanket.isSelected() && !txtBlanketQuantity.getText().isEmpty()) {
+        Addon blanket = findAddonByName("Blanket");
+        if (blanket != null) {
             blanket.setSelected(true);
             blanket.setQuantity(Integer.parseInt(txtBlanketQuantity.getText()));
             blanket.setDiscountCountFromTextField(txtDiscountBlanket.getText());
             selectedAddons.add(blanket);
         }
+    }
 
-        if (cbPillows.isSelected() && !txtPillowsQuantity.getText().isEmpty()) {
-            Addon pillows = addons.get(2);
+    if (cbPillows.isSelected() && !txtPillowsQuantity.getText().isEmpty()) {
+        Addon pillows = findAddonByName("Pillows");
+        if (pillows != null) {
             pillows.setSelected(true);
             pillows.setQuantity(Integer.parseInt(txtPillowsQuantity.getText()));
             pillows.setDiscountCountFromTextField(txtDiscountPillow.getText());
             selectedAddons.add(pillows);
         }
+    }
 
-        if (cbToiletries.isSelected() && !txtToiletriesQuantity.getText().isEmpty()) {
-            Addon toiletries = addons.get(3);
+    if (cbToiletries.isSelected() && !txtToiletriesQuantity.getText().isEmpty()) {
+        Addon toiletries = findAddonByName("Toiletries");
+        if (toiletries != null) {
             toiletries.setSelected(true);
             toiletries.setQuantity(Integer.parseInt(txtToiletriesQuantity.getText()));
             toiletries.setDiscountCountFromTextField(txtDiscountToiletry.getText());
             selectedAddons.add(toiletries);
         }
-
-        return selectedAddons;
     }
+
+    return selectedAddons;
+}
 
     public List<Services> getSelectedServices() {
         List<Services> selectedServices = new ArrayList<>();
 
         if (cbSwimmingPool.isSelected() && !txtSPQuantity.getText().isEmpty()) {
-            Services pool = services.get(0);
-            pool.setSelected(true);
-            pool.setQuantity(Integer.parseInt(txtSPQuantity.getText()));
-            pool.setDiscountCountFromTextField(txtDiscountPool.getText());
-            selectedServices.add(pool);
+            Services pool = findServiceByName("Swimming Pool");
+            if (pool != null) {
+                pool.setSelected(true);
+                pool.setQuantity(Integer.parseInt(txtSPQuantity.getText()));
+                pool.setDiscountCountFromTextField(txtDiscountPool.getText());
+                selectedServices.add(pool);
+            }
         }
 
         if (cbGym.isSelected() && !txtGymQuantity.getText().isEmpty()) {
-            Services gym = services.get(1);
-            gym.setSelected(true);
-            gym.setQuantity(Integer.parseInt(txtGymQuantity.getText()));
-            gym.setDiscountCountFromTextField(txtDiscountGym.getText());
-            selectedServices.add(gym);
+            Services gym = findServiceByName("Gym");
+            if (gym != null) {
+                gym.setSelected(true);
+                gym.setQuantity(Integer.parseInt(txtGymQuantity.getText()));
+                gym.setDiscountCountFromTextField(txtDiscountGym.getText());
+                selectedServices.add(gym);
+            }
         }
 
         if (cbFootSpa.isSelected() && !txtFSQuantity.getText().isEmpty()) {
-            Services footSpa = services.get(2);
-            footSpa.setSelected(true);
-            footSpa.setQuantity(Integer.parseInt(txtFSQuantity.getText()));
-            footSpa.setDiscountCountFromTextField(txtDiscountFSpa.getText());
-            selectedServices.add(footSpa);
+            Services footSpa = findServiceByName("Foot Spa");
+            if (footSpa != null) {
+                footSpa.setSelected(true);
+                footSpa.setQuantity(Integer.parseInt(txtFSQuantity.getText()));
+                footSpa.setDiscountCountFromTextField(txtDiscountFSpa.getText());
+                selectedServices.add(footSpa);
+            }
         }
 
         if (cbAFMassage.isSelected() && !txtAFMQuantity.getText().isEmpty()) {
-            Services aromaMassage = services.get(3);
-            aromaMassage.setSelected(true);
-            aromaMassage.setQuantity(Integer.parseInt(txtAFMQuantity.getText()));
-            aromaMassage.setDiscountCountFromTextField(txtFMassage.getText());
-            selectedServices.add(aromaMassage);
+            Services aromaMassage = findServiceByName("Aroma Facial Massage");
+            if (aromaMassage != null) {
+                aromaMassage.setSelected(true);
+                aromaMassage.setQuantity(Integer.parseInt(txtAFMQuantity.getText()));
+                aromaMassage.setDiscountCountFromTextField(txtFMassage.getText());
+                selectedServices.add(aromaMassage);
+            }
         }
 
         if (cbThaiMassage.isSelected() && !txtTMQuantity.getText().isEmpty()) {
-            Services thaiMassage = services.get(4);
-            thaiMassage.setSelected(true);
-            thaiMassage.setQuantity(Integer.parseInt(txtTMQuantity.getText()));
-            thaiMassage.setDiscountCountFromTextField(txtTMassage.getText());
-            selectedServices.add(thaiMassage);
+            Services thaiMassage = findServiceByName("Thai Massage");
+            if (thaiMassage != null) {
+                thaiMassage.setSelected(true);
+                thaiMassage.setQuantity(Integer.parseInt(txtTMQuantity.getText()));
+                thaiMassage.setDiscountCountFromTextField(txtTMassage.getText());
+                selectedServices.add(thaiMassage);
+            }
         }
 
         return selectedServices;
+    }
+
+    // Helper method to find addon by name
+    private Addon findAddonByName(String name) {
+        for (Addon addon : addons) {
+            if (addon.getName().equals(name)) {
+                return addon;
+            }
+        }
+        return null;
+    }
+
+    // Helper method to find service by name
+    private Services findServiceByName(String name) {
+        for (Services service : services) {
+            if (service.getName().equals(name)) {
+                return service;
+            }
+        }
+        return null;
     }
     /**
      * This method is called from within the constructor to initialize the form.

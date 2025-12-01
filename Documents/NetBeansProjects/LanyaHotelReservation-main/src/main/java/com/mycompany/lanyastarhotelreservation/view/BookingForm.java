@@ -95,7 +95,7 @@ public class BookingForm extends javax.swing.JFrame {
             }
         });
 
-        cmbDestination.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "--Select Destination--" }));
+        cmbDestination.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "--Select Location--" }));
         cmbDestination.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 cmbDestinationActionPerformed(evt);
@@ -116,11 +116,11 @@ public class BookingForm extends javax.swing.JFrame {
         jPanel1Layout.setVerticalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel1Layout.createSequentialGroup()
-                .addContainerGap()
+                .addGap(19, 19, 19)
                 .addComponent(cmbType, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(18, 18, 18)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addComponent(cmbDestination, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addGap(22, 22, 22))
         );
 
         jPanel2.setBorder(javax.swing.BorderFactory.createEtchedBorder());
@@ -236,7 +236,7 @@ public class BookingForm extends javax.swing.JFrame {
                         .addComponent(jLabel5, javax.swing.GroupLayout.PREFERRED_SIZE, 121, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addComponent(jLabel4, javax.swing.GroupLayout.PREFERRED_SIZE, 96, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jTextField1, javax.swing.GroupLayout.PREFERRED_SIZE, 96, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(20, Short.MAX_VALUE))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         jPanel4Layout.setVerticalGroup(
             jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -273,7 +273,7 @@ public class BookingForm extends javax.swing.JFrame {
                 .addComponent(lblChildAge1)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(txtChildAge1, javax.swing.GroupLayout.PREFERRED_SIZE, 73, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addContainerGap(87, Short.MAX_VALUE))
         );
         pnlChild1Layout.setVerticalGroup(
             pnlChild1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -401,13 +401,10 @@ public class BookingForm extends javax.swing.JFrame {
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
                             .addComponent(jPanel1, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                             .addComponent(jPanel3, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addGroup(layout.createSequentialGroup()
-                                .addGap(12, 12, 12)
-                                .addComponent(jPanel4, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                            .addGroup(layout.createSequentialGroup()
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(pnlChildren, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))))
+                            .addComponent(pnlChildren, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(jPanel4, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
                 .addContainerGap())
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
@@ -419,16 +416,16 @@ public class BookingForm extends javax.swing.JFrame {
             .addGroup(layout.createSequentialGroup()
                 .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jPanel4, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                    .addComponent(jPanel4, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(jPanel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(jPanel3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(pnlChildren, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(btnNext, javax.swing.GroupLayout.PREFERRED_SIZE, 33, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(0, 16, Short.MAX_VALUE))
+                .addGap(0, 0, Short.MAX_VALUE))
         );
 
         pack();
@@ -487,50 +484,56 @@ try {
     }
 }
 
-private void showValidationErrors(List<String> errors) {
-    String errorMessage = String.join("\n", errors);
-    JOptionPane.showMessageDialog(this, errorMessage, "Validation Error", JOptionPane.ERROR_MESSAGE);
-}
+    private void showValidationErrors(List<String> errors) {
+        String errorMessage = String.join("\n", errors);
+        JOptionPane.showMessageDialog(this, errorMessage, "Validation Error", JOptionPane.ERROR_MESSAGE);
+    }
 
-private Booking collectFormData() {
-    // Collect form data
-    String destinationType = (String) cmbType.getSelectedItem();
-    String destination = (String) cmbDestination.getSelectedItem();
-    String checkInText = txtCheckIn.getText().trim();
-    String checkOutText = txtCheckOut.getText().trim();
-    int leadGuestAge = Integer.parseInt(txtLeadGuest.getText().trim());
-    int numberOfAdults = Integer.parseInt(jTextField1.getText().trim());
-    
-    String childrenCountStr = (String) cmbChildren.getSelectedItem();
-    int numberOfChildren = (childrenCountStr != null && !childrenCountStr.equals("--Select Count--")) 
-        ? Integer.parseInt(childrenCountStr) : 0;
-    
-    // Parse dates using your Booking model's parseDate method
-    LocalDate checkInDate = Booking.parseDate(checkInText);
-    LocalDate checkOutDate = Booking.parseDate(checkOutText);
-    
-    // Collect children ages
-    List<Integer> childrenAges = new ArrayList<>();
-    if (numberOfChildren >= 1 && !txtChildAge1.getText().trim().isEmpty()) {
-        childrenAges.add(parseChildAge(txtChildAge1.getText().trim()));
+    private Booking collectFormData() {
+        // Collect form data
+        String destinationType = (String) cmbType.getSelectedItem();
+        String destination = (String) cmbDestination.getSelectedItem();
+        String checkInText = txtCheckIn.getText().trim();
+        String checkOutText = txtCheckOut.getText().trim();
+        int leadGuestAge = Integer.parseInt(txtLeadGuest.getText().trim());
+        int numberOfAdults = Integer.parseInt(jTextField1.getText().trim());
+
+        String childrenCountStr = (String) cmbChildren.getSelectedItem();
+        int numberOfChildren = (childrenCountStr != null && !childrenCountStr.equals("--Select Count--")) 
+            ? Integer.parseInt(childrenCountStr) : 0;
+
+        // Parse dates
+        LocalDate checkInDate = Booking.parseDate(checkInText);
+        LocalDate checkOutDate = Booking.parseDate(checkOutText);
+
+        // Collect children ages
+        List<Integer> childrenAges = new ArrayList<>();
+        if (numberOfChildren >= 1 && !txtChildAge1.getText().trim().isEmpty()) {
+            childrenAges.add(parseChildAge(txtChildAge1.getText().trim()));
+        }
+        if (numberOfChildren >= 2 && !txtChildAge2.getText().trim().isEmpty()) {
+            childrenAges.add(parseChildAge(txtChildAge2.getText().trim()));
+        }
+        if (numberOfChildren >= 3 && !txtChildAge3.getText().trim().isEmpty()) {
+            childrenAges.add(parseChildAge(txtChildAge3.getText().trim()));
+        }
+        if (numberOfChildren >= 4 && !txtChildAge4.getText().trim().isEmpty()) {
+            childrenAges.add(parseChildAge(txtChildAge4.getText().trim()));
+        }
+
+        // Create Booking object using empty constructor and setters
+        Booking booking = new Booking();
+        booking.setDestinationType(destinationType);
+        booking.setDestination(destination);
+        booking.setCheckInDate(checkInDate);
+        booking.setCheckOutDate(checkOutDate);
+        booking.setLeadGuestAge(leadGuestAge);
+        booking.setNumberOfAdults(numberOfAdults);
+        booking.setNumberOfChildren(numberOfChildren);
+        booking.setChildrenAges(childrenAges);
+
+        return booking;
     }
-    if (numberOfChildren >= 2 && !txtChildAge2.getText().trim().isEmpty()) {
-        childrenAges.add(parseChildAge(txtChildAge2.getText().trim()));
-    }
-    if (numberOfChildren >= 3 && !txtChildAge3.getText().trim().isEmpty()) {
-        childrenAges.add(parseChildAge(txtChildAge3.getText().trim()));
-    }
-    if (numberOfChildren >= 4 && !txtChildAge4.getText().trim().isEmpty()) {
-        childrenAges.add(parseChildAge(txtChildAge4.getText().trim()));
-    }
-    
-    // Create Booking object using your model's constructor
-    Booking booking = new Booking(destinationType, destination, checkInDate, 
-                                checkOutDate, leadGuestAge, numberOfAdults, 
-                                numberOfChildren, childrenAges);
-    
-    return booking;
-}
 
     private void openRoomSelectionForm(Booking booking) {
         try {
