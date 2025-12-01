@@ -6,11 +6,14 @@ package com.mycompany.lanyastarhotelreservation.view;
 import com.mycompany.lanyastarhotelreservation.model.Addon;
 import com.mycompany.lanyastarhotelreservation.model.Services;
 import com.mycompany.lanyastarhotelreservation.model.Booking;
+import com.mycompany.lanyastarhotelreservation.model.Room;
 import com.DAO.BookingDAO;
+import com.DAO.RoomDAO;
 import java.util.ArrayList;
 import java.util.List;
 import javax.swing.JOptionPane;
 import java.sql.*;
+import java.time.LocalDate;
 
 /**
  *
@@ -23,6 +26,9 @@ public class RoomSelectionForm extends javax.swing.JFrame {
     private int nightsStay;
     private int numAdults; 
     private Booking booking;
+    private String destinationType;
+    private String season;
+    private RoomDAO roomDAO;
     /**
      * Creates new form RoomSelectionForm
      */
@@ -30,6 +36,7 @@ public class RoomSelectionForm extends javax.swing.JFrame {
         initComponents();
         initializeModels();
         initializeForm();
+        this.roomDAO = new RoomDAO();
     }
     private void initializeModels() {
         // Initialize addons
@@ -66,8 +73,144 @@ public class RoomSelectionForm extends javax.swing.JFrame {
         this.totalGuests = booking.calculatePayingGuests();
         this.nightsStay = booking.calculateNights();
         this.numAdults = booking.getNumberOfAdults();
+        this.destinationType = booking.getDestinationType();
+        this.season = determineSeason(booking.getCheckInDate());
+        
         updateValidationLimits();
+        loadRoomsFromDatabase();
     }
+    
+    private void loadRoomsFromDatabase() {
+        List<Room> availableRooms = roomDAO.getAvailableRooms(destinationType, season, totalGuests);
+
+        // DEBUG: See what rooms are being returned
+        System.out.println("=== ROOM FILTERING DEBUG ===");
+        System.out.println("Total Guests: " + totalGuests);
+        System.out.println("Available Rooms Found: " + availableRooms.size());
+        for (Room room : availableRooms) {
+            System.out.println("Room: " + room.getRoomType() + 
+                              " | Capacity: " + room.getCapacity() + 
+                              " + " + room.getExtraBedCount() + " extra beds = " + 
+                              (room.getCapacity() + room.getExtraBedCount()));
+        }
+
+        updateRoomTable(availableRooms);
+        updateRoomTypeComboBox(availableRooms);
+        updateSeasonInfo();
+    }
+
+    private void updateRoomTable(List<Room> availableRooms) {
+        Object[][] tableData = new Object[availableRooms.size()][5]; // Added status column
+
+        for (int i = 0; i < availableRooms.size(); i++) {
+            Room room = availableRooms.get(i);
+            double currentPrice = room.getPrice(destinationType, season);
+
+            // Determine room status
+            String status;
+            if (room.getCapacity() >= totalGuests) {
+                status = "Perfect Fit ✅";
+            } else {
+                int extraBedsNeeded = totalGuests - room.getCapacity();
+                status = "Needs " + extraBedsNeeded + " extra bed(s)";
+            }
+
+            tableData[i][0] = room.getRoomType();
+            tableData[i][1] = room.getCapacity() + " guests" + 
+                             (room.getExtraBedCount() > 0 ? " w/ " + room.getExtraBedCount() + " extra bed" : "");
+            tableData[i][2] = room.getAvailableRooms();
+            tableData[i][3] = String.format("P %,.2f", currentPrice);
+            tableData[i][4] = status; // Status column
+        }
+
+        javax.swing.table.DefaultTableModel model = new javax.swing.table.DefaultTableModel(
+            tableData,
+            new String[] {"Room Type", "Capacity", "Available", "Price (" + season + ")", "Status"}
+        ) {
+            Class[] types = new Class[] {
+                java.lang.String.class, java.lang.String.class, 
+                java.lang.Integer.class, java.lang.String.class, java.lang.String.class
+            };
+
+            public Class getColumnClass(int columnIndex) {
+                return types[columnIndex];
+            }
+
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        
+
+        jTable1.setModel(model);
+
+        // Auto-select the first perfect fit room if available
+        if (!availableRooms.isEmpty() && jTable1.getRowCount() > 0) {
+            // Find first perfect fit room
+            int perfectFitRow = -1;
+            for (int i = 0; i < availableRooms.size(); i++) {
+                if (availableRooms.get(i).getCapacity() >= totalGuests) {
+                    perfectFitRow = i;
+                    break;
+                }
+            }
+
+            // Select the perfect fit room, or first available room
+            int rowToSelect = (perfectFitRow != -1) ? perfectFitRow : 0;
+            jTable1.setRowSelectionInterval(rowToSelect, rowToSelect);
+            String selectedRoomType = (String) jTable1.getValueAt(rowToSelect, 0);
+            cmbRoomType.setSelectedItem(selectedRoomType);
+
+            // Show recommendation message
+            if (perfectFitRow != -1) {
+                showRecommendedRoom(availableRooms.get(perfectFitRow));
+            }
+        }
+    }
+    
+    private void showRecommendedRoom(Room recommendedRoom) {
+        String message = String.format(
+            "RECOMMENDED ROOM: %s\n\n" +
+            "• Perfect fit for %d guests (no extra beds needed)\n" +
+            "• Price: P %,.2f (%s Season)\n" +
+            "• %d rooms available",
+            recommendedRoom.getRoomType(),
+            totalGuests,
+            recommendedRoom.getPrice(destinationType, season),
+            season,
+            recommendedRoom.getAvailableRooms()
+        );
+
+        // You can show this as a tooltip, status message, or optional popup
+        System.out.println("RECOMMENDATION: " + message);
+
+        // Optional: Show as non-intrusive message
+        // JOptionPane.showMessageDialog(this, message, "Room Recommendation", JOptionPane.INFORMATION_MESSAGE);
+    }
+    
+    private String determineSeason(LocalDate checkInDate) {
+        if (checkInDate == null) return "Lean";
+        int month = checkInDate.getMonthValue();
+        if (month >= 3 && month <= 5) return "Lean";
+        else if (month >= 6 && month <= 8) return "High";
+        else if (month >= 9 && month <= 11) return "Peak";
+        else return "Super Peak";
+    }
+
+    private void updateRoomTypeComboBox(List<Room> availableRooms) {
+        List<String> roomTypes = new ArrayList<>();
+        roomTypes.add("--Select Room Type--");
+        for (Room room : availableRooms) {
+            roomTypes.add(room.getRoomType());
+        }
+        cmbRoomType.setModel(new javax.swing.DefaultComboBoxModel<>(roomTypes.toArray(new String[0])));
+    }
+
+    private void updateSeasonInfo() {
+        System.out.println("Destination: " + destinationType + " | Season: " + season + 
+                          " | Guests: " + totalGuests + " | Nights: " + nightsStay);
+    }
+    
     
     private void updateValidationLimits() {
         // Services already have their max quantity calculation
@@ -196,7 +339,6 @@ public class RoomSelectionForm extends javax.swing.JFrame {
         JOptionPane.showMessageDialog(this, errorMessage, "Validation Error", JOptionPane.ERROR_MESSAGE);
     }
     
-    // Existing methods remain the same...
 
 
     
@@ -686,11 +828,12 @@ public class RoomSelectionForm extends javax.swing.JFrame {
             ServicesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(ServicesPanelLayout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(ServicesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel11)
-                    .addComponent(jLabel13)
-                    .addComponent(jLabel20)
-                    .addComponent(jLabel22, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addGroup(ServicesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jLabel22, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addGroup(ServicesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                        .addComponent(jLabel11)
+                        .addComponent(jLabel13)
+                        .addComponent(jLabel20)))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(ServicesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                     .addGroup(ServicesPanelLayout.createSequentialGroup()
@@ -778,8 +921,7 @@ public class RoomSelectionForm extends javax.swing.JFrame {
                     .addGroup(layout.createSequentialGroup()
                         .addComponent(ServicesPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addGap(27, 27, 27)
-                        .addComponent(btnNext, javax.swing.GroupLayout.PREFERRED_SIZE, 52, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
+                        .addComponent(btnNext, javax.swing.GroupLayout.PREFERRED_SIZE, 52, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addContainerGap())
         );
 
@@ -822,52 +964,62 @@ public class RoomSelectionForm extends javax.swing.JFrame {
     private void btnNextActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnNextActionPerformed
         // TODO add your handling code here:
     if (validateForm()) {
-        try {
-            // Check if booking object exists
-            if (booking == null) {
+            try {
+                String selectedRoomType = (String) cmbRoomType.getSelectedItem();
+                if (selectedRoomType == null || selectedRoomType.equals("--Select Room Type--")) {
+                    JOptionPane.showMessageDialog(this, "Please select a room type", "Validation Error", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+                
+                // Update room availability
+                boolean roomUpdated = roomDAO.updateRoomAvailability(selectedRoomType);
+                if (!roomUpdated) {
+                    JOptionPane.showMessageDialog(this, 
+                        "Room no longer available. Please choose another.",
+                        "Room Not Available", JOptionPane.WARNING_MESSAGE);
+                    loadRoomsFromDatabase();
+                    return;
+                }
+                
+                // Get room details for confirmation
+                Room selectedRoom = roomDAO.getRoomByType(selectedRoomType);
+                double roomPrice = selectedRoom.getPrice(destinationType, season);
+                
+                // Save booking (your existing code)
+                BookingDAO bookingDAO = new BookingDAO();
+                int bookingId = bookingDAO.saveBooking(booking);
+                
+                // Save addons and services
+                List<Addon> selectedAddons = getSelectedAddons();
+                List<Services> selectedServices = getSelectedServices();
+                
+                if (!selectedAddons.isEmpty()) {
+                    bookingDAO.saveBookingAddons(bookingId, selectedAddons);
+                }
+                if (!selectedServices.isEmpty()) {
+                    bookingDAO.saveBookingServices(bookingId, selectedServices);
+                }
+                
+                // Show confirmation with room details
                 JOptionPane.showMessageDialog(this, 
-                    "Booking information not found. Please go back and try again.", 
-                    "Error", JOptionPane.ERROR_MESSAGE);
-                return;
+                    "✅ BOOKING CONFIRMED!\n\n" +
+                    "Booking ID: " + bookingId + "\n" +
+                    "Room: " + selectedRoomType + "\n" +
+                    "Price: " + String.format("P %,.2f", roomPrice) + " (" + season + " Season)\n" +
+                    "Destination: " + destinationType + "\n" +
+                    "Guests: " + totalGuests + "\n" +
+                    "Nights: " + nightsStay,
+                    "Booking Confirmed", JOptionPane.INFORMATION_MESSAGE);
+                
+                openSummaryForm();
+                
+            } catch (SQLException e) {
+                JOptionPane.showMessageDialog(this, 
+                    "Database Error: " + e.getMessage(), 
+                    "Save Failed", JOptionPane.ERROR_MESSAGE);
+                e.printStackTrace();
             }
-            
-            // Save to database
-            BookingDAO dao = new BookingDAO();
-            int bookingId = dao.saveBooking(booking);
-            
-            // Save addons and services
-            List<Addon> selectedAddons = getSelectedAddons();
-            List<Services> selectedServices = getSelectedServices();
-            
-            if (!selectedAddons.isEmpty()) {
-                dao.saveBookingAddons(bookingId, selectedAddons);
-            }
-            if (!selectedServices.isEmpty()) {
-                dao.saveBookingServices(bookingId, selectedServices);
-            }
-            
-            // Show success message
-            JOptionPane.showMessageDialog(this, 
-                "Booking saved successfully!\nBooking ID: " + bookingId +
-                "\nTotal Guests: " + totalGuests +
-                "\nNights: " + nightsStay,
-                "Booking Confirmed", JOptionPane.INFORMATION_MESSAGE);
-            
-            // Proceed to summary
-            openSummaryForm();
-            
-        } catch (SQLException e) {
-            JOptionPane.showMessageDialog(this, 
-                "Error saving booking to database: " + e.getMessage(), 
-                "Database Error", JOptionPane.ERROR_MESSAGE);
-            e.printStackTrace();
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, 
-                "Unexpected error: " + e.getMessage(), 
-                "Error", JOptionPane.ERROR_MESSAGE);
-            e.printStackTrace();
         }
-    }
     }//GEN-LAST:event_btnNextActionPerformed
 
     /**
