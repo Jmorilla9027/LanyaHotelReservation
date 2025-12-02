@@ -1060,10 +1060,10 @@ public class RoomSelectionForm extends javax.swing.JFrame {
                             .addGroup(layout.createSequentialGroup()
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addComponent(ServicesPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                            .addGroup(layout.createSequentialGroup()
+                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                                 .addComponent(btnNext, javax.swing.GroupLayout.PREFERRED_SIZE, 121, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addGap(87, 87, 87)))))
+                                .addGap(192, 192, 192)))))
                 .addContainerGap())
         );
         layout.setVerticalGroup(
@@ -1079,8 +1079,9 @@ public class RoomSelectionForm extends javax.swing.JFrame {
                         .addComponent(AddonPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                     .addGroup(layout.createSequentialGroup()
                         .addComponent(ServicesPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(27, 27, 27)
-                        .addComponent(btnNext, javax.swing.GroupLayout.PREFERRED_SIZE, 52, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                        .addGap(36, 36, 36)
+                        .addComponent(btnNext, javax.swing.GroupLayout.PREFERRED_SIZE, 52, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(0, 0, Short.MAX_VALUE)))
                 .addContainerGap())
         );
 
@@ -1123,70 +1124,123 @@ public class RoomSelectionForm extends javax.swing.JFrame {
     private void btnNextActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnNextActionPerformed
         // TODO add your handling code here:
     if (validateForm()) {
-    try {
-        String selectedRoomType = (String) cmbRoomType.getSelectedItem();
-        if (selectedRoomType == null || selectedRoomType.equals("--Select Room Type--")) {
-            JOptionPane.showMessageDialog(this, "Please select a room type", "Validation Error", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-        
-        // Update room availability - FIXED: removed duplicate variable declaration
-        boolean roomUpdated = roomDAO.updateRoomAvailability(selectedRoomType, destinationType);
-        if (!roomUpdated) {
+        try {
+            String selectedRoomType = (String) cmbRoomType.getSelectedItem();
+            if (selectedRoomType == null || selectedRoomType.equals("--Select Room Type--")) {
+                JOptionPane.showMessageDialog(this, "Please select a room type", "Validation Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            
+            // Update room availability
+            boolean roomUpdated = roomDAO.updateRoomAvailability(selectedRoomType, destinationType);
+            if (!roomUpdated) {
+                JOptionPane.showMessageDialog(this, 
+                    "Room no longer available. Please choose another.",
+                    "Room Not Available", JOptionPane.WARNING_MESSAGE);
+                loadRoomsFromDatabase();
+                return;
+            }
+            
+            // Get room details for confirmation
+            Room selectedRoom = roomDAO.getRoomByType(selectedRoomType, destinationType);
+            
+            if (selectedRoom == null) {
+                JOptionPane.showMessageDialog(this, 
+                    "Room not found. Please select another room.",
+                    "Room Not Found", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            
+            double roomPrice = selectedRoom.getPrice(destinationType, season);
+            
+            // Save booking
+            BookingDAO bookingDAO = new BookingDAO();
+            int bookingId = bookingDAO.saveBooking(booking);
+            
+            // Save addons and services
+            List<Addon> selectedAddons = getSelectedAddons();
+            List<Services> selectedServices = getSelectedServices();
+            
+            if (!selectedAddons.isEmpty()) {
+                bookingDAO.saveBookingAddons(bookingId, selectedAddons);
+            }
+            if (!selectedServices.isEmpty()) {
+                bookingDAO.saveBookingServices(bookingId, selectedServices);
+            }
+            
+            // Open the reservation summary form with all data
+            openReservationSummary(booking, selectedRoom, selectedAddons, 
+                      selectedServices, destinationType, season, bookingId);
+            
+        } catch (SQLException e) {
             JOptionPane.showMessageDialog(this, 
-                "Room no longer available. Please choose another.",
-                "Room Not Available", JOptionPane.WARNING_MESSAGE);
-            loadRoomsFromDatabase();
-            return;
+                "Database Error: " + e.getMessage(), 
+                "Save Failed", JOptionPane.ERROR_MESSAGE);
+            e.printStackTrace();
         }
-        
-        // Get room details for confirmation - FIXED: added destinationType parameter
-        Room selectedRoom = roomDAO.getRoomByType(selectedRoomType, destinationType);
-        
-        if (selectedRoom == null) {
-            JOptionPane.showMessageDialog(this, 
-                "Room not found. Please select another room.",
-                "Room Not Found", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-        
-        double roomPrice = selectedRoom.getPrice(destinationType, season);
-        
-        // Save booking (your existing code)
-        BookingDAO bookingDAO = new BookingDAO();
-        int bookingId = bookingDAO.saveBooking(booking);
-        
-        // Save addons and services
-        List<Addon> selectedAddons = getSelectedAddons();
-        List<Services> selectedServices = getSelectedServices();
-        
-        if (!selectedAddons.isEmpty()) {
-            bookingDAO.saveBookingAddons(bookingId, selectedAddons);
-        }
-        if (!selectedServices.isEmpty()) {
-            bookingDAO.saveBookingServices(bookingId, selectedServices);
-        }
-        
-        // Show confirmation with room details
-        JOptionPane.showMessageDialog(this, 
-            "✅ BOOKING CONFIRMED!\n\n" +
-            "Booking ID: " + bookingId + "\n" +
-            "Room: " + selectedRoomType + "\n" +
-            "Price: " + String.format("P %,.2f", roomPrice) + " (" + season + " Season)\n" +
-            "Destination: " + destinationType + "\n" +
-            "Guests: " + totalGuests + "\n" +
-            "Nights: " + nightsStay,
-            "Booking Confirmed", JOptionPane.INFORMATION_MESSAGE);
-        
-        openSummaryForm();
-        
-    } catch (SQLException e) {
-        JOptionPane.showMessageDialog(this, 
-            "Database Error: " + e.getMessage(), 
-            "Save Failed", JOptionPane.ERROR_MESSAGE);
-        e.printStackTrace();
     }
 }
+
+    private void openReservationSummary(Booking booking, Room room, List<Addon> addons, 
+                                       List<Services> services, String destType, 
+                                       String season, int bookingId) {
+        try {
+            ReservationSummary summaryForm = new ReservationSummary();
+
+            // Calculate final amount here
+            double finalAmount = calculateFinalAmount(room, addons, services, destType, season, booking);
+
+            // Pass all data including the calculated amount
+            summaryForm.setBookingData(booking, room, addons, services, 
+                                      destType, season, bookingId, finalAmount);
+
+            summaryForm.setLocationRelativeTo(null);
+            summaryForm.setVisible(true);
+
+            this.dispose();
+
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this,
+                "Error opening reservation summary: " + e.getMessage(),
+                "Error", JOptionPane.ERROR_MESSAGE);
+            e.printStackTrace();
+        }
+    }
+
+    // Add this helper method to calculate final amount
+    private double calculateFinalAmount(Room room, List<Addon> addons, 
+                                       List<Services> services, String destType, 
+                                       String season, Booking booking) {
+
+        // Calculate room total
+        double roomTotal = room.getPrice(destType, season) * booking.calculateNights();
+
+        // Calculate addons total
+        double addonsTotal = 0;
+        if (addons != null) {
+            for (Addon addon : addons) {
+                if (addon.isSelected() && addon.getQuantity() > 0) {
+                    addonsTotal += addon.calculateTotalWithDiscount();
+                }
+            }
+        }
+
+        // Calculate services total
+        double servicesTotal = 0;
+        if (services != null) {
+            for (Services service : services) {
+                if (service.isSelected() && service.getQuantity() > 0) {
+                    servicesTotal += service.calculateTotalWithDiscount(booking.calculateNights());
+                }
+            }
+        }
+
+        // Calculate subtotal and VAT
+        double subtotal = roomTotal + addonsTotal + servicesTotal;
+        double vat = subtotal * 0.12;
+        double finalAmount = subtotal + vat;
+
+        return finalAmount;
     }//GEN-LAST:event_btnNextActionPerformed
 
     /**

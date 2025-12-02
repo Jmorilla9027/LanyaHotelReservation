@@ -110,7 +110,51 @@ package com.mycompany.lanyastarhotelreservation.model;
     public boolean requiresDaysInput() {
            return isDailyService;
        }
+    
+    public double calculateTotalWithDiscount(int nightsStay) {
+        double originalTotal = calculateTotalPrice(nightsStay);
 
+        if (this.discountCount > 0) {
+            double discountPerUnit = this.rate * 0.20;
+            double totalDiscount = discountPerUnit * this.discountCount;
+
+            if (this.isDailyService()) {
+                totalDiscount = discountPerUnit * this.discountCount * nightsStay;
+            }
+
+            return originalTotal - totalDiscount;
+        }
+
+        return originalTotal;
+    }
+
+    public double calculateOriginalTotal(int nightsStay) {
+        return calculateTotalPrice(nightsStay);
+    }
+
+    public double calculateDiscountAmount() {
+        if (this.discountCount > 0) {
+            double discountPerUnit = this.rate * 0.20;
+            return discountPerUnit * this.discountCount;
+        }
+        return 0;
+    }
+
+    public double calculateTotalPrice(int nightsStay) {
+        if (this.isDailyService()) {
+            return this.rate * this.quantity * nightsStay;
+        } else {
+            return this.rate * this.quantity;
+        }
+    }
+
+    public String getQuantityDescription() {
+        if (this.isDailyService()) {
+            return this.quantity + " guest(s) × daily";
+        } else {
+            return this.quantity + " session(s)";
+        }
+    }
     // Getters and Setters
     public int getServiceId() { return serviceId; }
     public void setServiceId(int serviceId) { this.serviceId = serviceId; }

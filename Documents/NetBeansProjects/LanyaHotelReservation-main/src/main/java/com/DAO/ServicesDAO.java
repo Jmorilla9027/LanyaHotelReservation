@@ -31,6 +31,30 @@ public class ServicesDAO {
         }
         return services;
     }
+    public void saveBookingServices(int bookingId, List<Services> services) throws SQLException {
+        if (services == null || services.isEmpty()) return;
+
+        // Omit service_id if it's auto-increment
+        String sql = "INSERT INTO booking_services (booking_id, service_name, quantity, rate, discount_count, discount_amount) " +
+                    "VALUES (?, ?, ?, ?, ?, ?)";
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            for (Services service : services) {
+                if (service.isSelected() && service.getQuantity() > 0) {
+                    stmt.setInt(1, bookingId);
+                    stmt.setString(2, service.getName());
+                    stmt.setInt(3, service.getQuantity());
+                    stmt.setDouble(4, service.getRate());
+                    stmt.setInt(5, service.getDiscountCount());
+                    stmt.setDouble(6, service.calculateDiscountAmount());
+                    stmt.addBatch();
+                }
+            }
+            stmt.executeBatch();
+        }
+    }
     
     public Services getServiceByName(String name) {
         String sql = "SELECT * FROM services WHERE name = ? AND is_active = TRUE";

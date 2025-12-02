@@ -32,7 +32,11 @@ public class Room {
             }
         }
     }
-
+    
+    public double calculateRoomTotal(int nightsStay, String destinationType, String season) {
+        return getPrice(destinationType, season) * nightsStay;
+    }
+    
     // Getters and Setters
     public int getRoomId() { return roomId; }
     public void setRoomId(int roomId) { this.roomId = roomId; }

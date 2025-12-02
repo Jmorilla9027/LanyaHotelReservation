@@ -80,6 +80,28 @@ public class Addon {
             }
         }
     }
+    
+    public double calculateTotalWithDiscount() {
+        double regularPrice = this.rate * this.quantity;
+        if (this.discountCount > 0) {
+            double regularTotal = this.rate * (this.quantity - this.discountCount);
+            double discountedTotal = (this.rate * 0.80) * this.discountCount;
+            return regularTotal + discountedTotal;
+        }
+        return regularPrice;
+    }
+
+    public double calculateDiscountAmount() {
+        if (this.discountCount > 0) {
+            return (this.rate * 0.20) * this.discountCount;
+        }
+        return 0;
+    }
+
+    public double getOriginalTotal() {
+        return this.rate * this.quantity;
+    }
+
 
     // Getters and Setters
     public int getAddonId() { return addonId; }
