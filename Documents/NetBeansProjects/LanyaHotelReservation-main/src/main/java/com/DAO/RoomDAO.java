@@ -29,11 +29,10 @@ public class RoomDAO {
             
             // Get rooms that can accommodate guests
             String sql = "SELECT *, " + priceColumn + " AS selected_price FROM " + tableName + 
-                        " WHERE available_rooms > 0 AND (capacity + extra_bed_count) >= ? " +
-                        "ORDER BY capacity ASC";
+                    " WHERE available_rooms > 0 " +
+                    "ORDER BY capacity ASC";
             
             PreparedStatement stmt = connection.prepareStatement(sql);
-            stmt.setInt(1, totalGuests);
             ResultSet rs = stmt.executeQuery();
 
             while (rs.next()) {

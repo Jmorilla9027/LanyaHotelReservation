@@ -167,173 +167,187 @@ public class RoomSelectionForm extends javax.swing.JFrame {
         updateSeasonInfo();
     }
 
-    private void updateRoomTable(List<Room> availableRooms) {
-        Object[][] tableData = new Object[availableRooms.size()][6];
+private void updateRoomTable(List<Room> availableRooms) {
+    Object[][] tableData = new Object[availableRooms.size()][6];
 
-        for (int i = 0; i < availableRooms.size(); i++) {
-            Room room = availableRooms.get(i);
-            double currentPrice = room.getPrice(destinationType, season);
+    for (int i = 0; i < availableRooms.size(); i++) {
+        Room room = availableRooms.get(i);
+        double currentPrice = room.getPrice(destinationType, season);
 
-            int roomsNeededForAllGuests = calculateRoomsNeeded(room, totalGuests);
-            boolean hasEnoughRooms = roomsNeededForAllGuests <= room.getAvailableRooms();
+        int roomsNeededForAllGuests = calculateRoomsNeeded(room, totalGuests);
+        boolean hasEnoughRooms = roomsNeededForAllGuests <= room.getAvailableRooms();
 
-            String capacityDesc = room.getCapacity() + " guest" + (room.getCapacity() > 1 ? "s" : "");
-            if (room.getExtraBedCount() > 0) {
-                capacityDesc += " + " + room.getExtraBedCount() + " extra bed" + (room.getExtraBedCount() > 1 ? "s" : "");
-            }
-
-            String status;
-            String recommendation;
-
-            if (room.getCapacity() >= totalGuests) {
-                if (room.getAvailableRooms() > 0) {
-                    status = "Perfect Fit";
-                    recommendation = "1 room needed";
-                } else {
-                    status = "No Rooms Available";
-                    recommendation = "Sold out";
-                }
-            } else {
-                if (hasEnoughRooms) {
-                    status = "Perfect Fit (" + roomsNeededForAllGuests + " rooms)";
-                    recommendation = roomsNeededForAllGuests + " rooms needed";
-                } else {
-                    status = "Insufficient Rooms";
-                    recommendation = "Need " + roomsNeededForAllGuests + " rooms, only " + room.getAvailableRooms() + " available";
-                }
-            }
-
-            tableData[i][0] = room.getRoomType();
-            tableData[i][1] = capacityDesc;
-            tableData[i][2] = room.getAvailableRooms();
-            tableData[i][3] = String.format("₱ %,.2f", currentPrice);
-            tableData[i][4] = status;
-            tableData[i][5] = recommendation;
+        String capacityDesc = room.getCapacity() + " guest" + (room.getCapacity() > 1 ? "s" : "");
+        if (room.getExtraBedCount() > 0) {
+            capacityDesc += " + " + room.getExtraBedCount() + " extra bed" + (room.getExtraBedCount() > 1 ? "s" : "");
         }
 
-        javax.swing.table.DefaultTableModel model = new javax.swing.table.DefaultTableModel(
-            tableData,
-            new String[] {"Room Type", "Capacity", "Available", "Price (" + season + ")", "Status", "Recommendation"}
-        ) {
-            Class[] types = new Class[] {
-                java.lang.String.class, java.lang.String.class, 
-                java.lang.Integer.class, java.lang.String.class, java.lang.String.class, java.lang.String.class
-            };
+        String status;
+        String recommendation;
 
-            public Class getColumnClass(int columnIndex) {
-                return types[columnIndex];
+        if (room.getCapacity() >= totalGuests) {
+            if (room.getAvailableRooms() > 0) {
+                status = "Single Room Fit";
+                recommendation = "1 room needed";
+            } else {
+                status = "No Rooms Available";
+                recommendation = "Sold out";
             }
+        } else {
+            if (hasEnoughRooms) {
+                status = "Multiple Rooms (" + roomsNeededForAllGuests + " rooms)";
+                recommendation = roomsNeededForAllGuests + " rooms needed";
+            } else {
+                status = "Insufficient Rooms";
+                recommendation = "Need " + roomsNeededForAllGuests + " rooms, only " + room.getAvailableRooms() + " available";
+            }
+        }
 
-            public boolean isCellEditable(int row, int column) {
-                return false;
-            }
+        tableData[i][0] = room.getRoomType();
+        tableData[i][1] = capacityDesc;
+        tableData[i][2] = room.getAvailableRooms();
+        tableData[i][3] = String.format("₱ %,.2f", currentPrice);
+        tableData[i][4] = status;
+        tableData[i][5] = recommendation;
+    }
+
+    javax.swing.table.DefaultTableModel model = new javax.swing.table.DefaultTableModel(
+        tableData,
+        new String[] {"Room Type", "Capacity", "Available", "Price (" + season + ")", "Status", "Recommendation"}
+    ) {
+        Class[] types = new Class[] {
+            java.lang.String.class, java.lang.String.class, 
+            java.lang.Integer.class, java.lang.String.class, java.lang.String.class, java.lang.String.class
         };
 
-        jTable1.setModel(model);
+        public Class getColumnClass(int columnIndex) {
+            return types[columnIndex];
+        }
 
-        // Auto-select the first perfect fit room if available
-        if (!availableRooms.isEmpty() && jTable1.getRowCount() > 0) {
-            // Find first perfect fit room
-            int perfectFitRow = -1;
+        public boolean isCellEditable(int row, int column) {
+            return false;
+        }
+    };
+
+    jTable1.setModel(model);
+
+    // Auto-select the first room option with sufficient availability
+    int rowToSelect = -1;
+    
+    if (!availableRooms.isEmpty() && jTable1.getRowCount() > 0) {
+        // Try to find a perfect single-room fit first
+        for (int i = 0; i < availableRooms.size(); i++) {
+            Room room = availableRooms.get(i);
+            if (room.getCapacity() >= totalGuests && room.getAvailableRooms() > 0) {
+                rowToSelect = i;
+                break;
+            }
+        }
+        
+        // If no single-room fit, find any room with enough availability
+        if (rowToSelect == -1) {
             for (int i = 0; i < availableRooms.size(); i++) {
                 Room room = availableRooms.get(i);
                 int roomsNeeded = calculateRoomsNeeded(room, totalGuests);
                 if (roomsNeeded <= room.getAvailableRooms()) {
-                    perfectFitRow = i;
+                    rowToSelect = i;
                     break;
                 }
             }
-
-            // Select the perfect fit room, or first available room
-            int rowToSelect = (perfectFitRow != -1) ? perfectFitRow : 0;
-            jTable1.setRowSelectionInterval(rowToSelect, rowToSelect);
-            String selectedRoomType = (String) jTable1.getValueAt(rowToSelect, 0);
-            cmbRoomType.setSelectedItem(selectedRoomType);
-
-            // Store the selected room
-            selectedRoom = availableRooms.get(rowToSelect);
-
-            // Update room quantity combo box
-            updateRoomQuantityComboBox(selectedRoom);
-
-            // Show recommendation message
-            if (perfectFitRow != -1) {
-                showRecommendedRoom(availableRooms.get(perfectFitRow));
-            }
         }
+        
+        // If still no selection, just select the first room
+        if (rowToSelect == -1) {
+            rowToSelect = 0;
+        }
+        
+        // Make the selection
+        jTable1.setRowSelectionInterval(rowToSelect, rowToSelect);
+        String selectedRoomType = (String) jTable1.getValueAt(rowToSelect, 0);
+        cmbRoomType.setSelectedItem(selectedRoomType);
+        
+        // Store the selected room - IMPORTANT: Use the room from availableRooms list
+        selectedRoom = availableRooms.get(rowToSelect);
+        
+        // Update room quantity combo box - Pass the selected room
+        updateRoomQuantityComboBox(selectedRoom);
+        
+        System.out.println("DEBUG: Auto-selected " + selectedRoom.getRoomType() + 
+                          " at row " + rowToSelect + " for " + totalGuests + " guests");
     }
+}
     private void updateRoomQuantityComboBox(Room selectedRoom) {
-        if (selectedRoom == null) {
-            // Try to get the room from the selected room type
-            String selectedRoomType = (String) cmbRoomType.getSelectedItem();
-            if (selectedRoomType == null || selectedRoomType.equals("--Select Room Type--")) {
-                return;
-            }
-            selectedRoom = roomDAO.getRoomByType(selectedRoomType, destinationType);
-            if (selectedRoom == null) return;
-        }
-
-        int roomsNeeded = calculateRoomsNeeded(selectedRoom, totalGuests);
-        int maxRooms = Math.min(selectedRoom.getAvailableRooms(), roomsNeeded + 5);
-
-        List<String> quantities = new ArrayList<>();
-        quantities.add("--Select Quantity--");
-
-        for (int i = roomsNeeded; i <= maxRooms; i++) {
-            quantities.add(String.valueOf(i));
-        }
-
-        cmbSelectRoomQuantity.setModel(new javax.swing.DefaultComboBoxModel<>(
-            quantities.toArray(new String[0])
-        ));
-
-        if (roomsNeeded <= maxRooms) {
-            cmbSelectRoomQuantity.setSelectedItem(String.valueOf(roomsNeeded));
-        }
+    if (selectedRoom == null) {
+        System.err.println("ERROR: selectedRoom is null in updateRoomQuantityComboBox");
+        return;
     }
     
+    int roomsNeeded = calculateRoomsNeeded(selectedRoom, totalGuests);
+    int maxRooms = Math.min(selectedRoom.getAvailableRooms(), roomsNeeded + 5);
+    
+    List<String> quantities = new ArrayList<>();
+    quantities.add("--Select Quantity--");
+    
+    for (int i = roomsNeeded; i <= maxRooms; i++) {
+        quantities.add(String.valueOf(i));
+    }
+    
+    cmbSelectRoomQuantity.setModel(new javax.swing.DefaultComboBoxModel<>(
+        quantities.toArray(new String[0])
+    ));
+    
+    if (roomsNeeded <= maxRooms) {
+        cmbSelectRoomQuantity.setSelectedItem(String.valueOf(roomsNeeded));
+    }
+    
+    System.out.println("DEBUG: Updated room quantity combo box for " + selectedRoom.getRoomType() + 
+                      " | Rooms needed: " + roomsNeeded + " | Max available: " + maxRooms);
+}
     private void showRecommendedRoom(Room recommendedRoom) {
         int roomsNeeded = calculateRoomsNeeded(recommendedRoom, totalGuests);
         double pricePerRoom = recommendedRoom.getPrice(destinationType, season);
         double totalPricePerNight = pricePerRoom * roomsNeeded;
-
-        String message;
-        if (roomsNeeded == 1) {
-            message = String.format(
-                "RECOMMENDED: %s Room\n\n" +
-                "• Perfect for %d guests (1 room)\n" +
-                "• Price: ₱ %,.2f per night\n" +
-                "• Season: %s\n" +
-                "• Available rooms: %d",
-                recommendedRoom.getRoomType(),
-                totalGuests,
-                pricePerRoom,
-                season,
-                recommendedRoom.getAvailableRooms()
-            );
-        } else {
-            message = String.format(
-                "RECOMMENDED: %d × %s Rooms\n\n" +
-                "• %d guests = %d rooms × %d guests each\n" +
-                "• Price: ₱ %,.2f per room\n" +
-                "• Total: ₱ %,.2f per night\n" +
-                "• Season: %s\n" +
-                "• Available rooms: %d",
-                roomsNeeded,
-                recommendedRoom.getRoomType(),
-                totalGuests,
-                roomsNeeded,
-                recommendedRoom.getCapacity(),
-                pricePerRoom,
-                totalPricePerNight,
-                season,
-                recommendedRoom.getAvailableRooms()
-            );
-        }
-
-        System.out.println("RECOMMENDATION: " + message);
+    
+    String message;
+    if (roomsNeeded == 1) {
+        message = String.format(
+            "RECOMMENDED: %s Room\n\n" +
+            "• %d guests = 1 room × %d guests capacity\n" +
+            "• Price: ₱ %,.2f per night\n" +
+            "• Total: ₱ %,.2f per night\n" +
+            "• Season: %s\n" +
+            "• Available rooms: %d",
+            recommendedRoom.getRoomType(),
+            totalGuests,
+            recommendedRoom.getCapacity(),
+            pricePerRoom,
+            totalPricePerNight,
+            season,
+            recommendedRoom.getAvailableRooms()
+        );
+    } else {
+        message = String.format(
+            "RECOMMENDED: %d × %s Rooms\n\n" +
+            "• %d guests = %d rooms × %d guests each\n" +
+            "• Price: ₱ %,.2f per room\n" +
+            "• Total: ₱ %,.2f per night\n" +
+            "• Season: %s\n" +
+            "• Available rooms: %d (need %d)",
+            roomsNeeded,
+            recommendedRoom.getRoomType(),
+            totalGuests,
+            roomsNeeded,
+            recommendedRoom.getCapacity(),
+            pricePerRoom,
+            totalPricePerNight,
+            season,
+            recommendedRoom.getAvailableRooms(),
+            roomsNeeded
+        );
     }
     
+    System.out.println("RECOMMENDATION: " + message);
+}    
     private String determineSeason(LocalDate checkInDate) {
         if (checkInDate == null) return "Lean";
         int month = checkInDate.getMonthValue();
@@ -1229,9 +1243,12 @@ public class RoomSelectionForm extends javax.swing.JFrame {
         // TODO add your handling code here:                                    
     String selectedRoomType = (String) cmbRoomType.getSelectedItem();
     if (selectedRoomType != null && !selectedRoomType.equals("--Select Room Type--")) {
+        // Get the room from database
         selectedRoom = roomDAO.getRoomByType(selectedRoomType, destinationType);
         if (selectedRoom != null) {
             updateRoomQuantityComboBox(selectedRoom);
+            System.out.println("DEBUG: User selected " + selectedRoomType + 
+                              " from combo box, updated quantity options");
         }
     }
     }//GEN-LAST:event_cmbRoomTypeActionPerformed
@@ -1388,9 +1405,9 @@ public class RoomSelectionForm extends javax.swing.JFrame {
    }
     private void cmbSelectRoomQuantityActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cmbSelectRoomQuantityActionPerformed
         // TODO add your handling code here:
-    String selectedRoomType = (String) cmbRoomType.getSelectedItem();
-    if (selectedRoomType != null && !selectedRoomType.equals("--Select Room Type--")) {
-        selectedRoom = roomDAO.getRoomByType(selectedRoomType, destinationType);
+    String selectedQuantity = (String) cmbSelectRoomQuantity.getSelectedItem();
+    if (selectedQuantity != null && !selectedQuantity.equals("--Select Quantity--")) {
+        System.out.println("DEBUG: User selected room quantity: " + selectedQuantity);
     }
     }//GEN-LAST:event_cmbSelectRoomQuantityActionPerformed
 
