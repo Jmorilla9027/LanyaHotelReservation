@@ -23,6 +23,7 @@ public class ReservationSummary extends javax.swing.JFrame {
     private String season;
     private int bookingId;
     private double finalAmount;
+    private int roomQuantity;
     /**
      * Creates new form ReservationSummary
      */
@@ -59,12 +60,13 @@ public class ReservationSummary extends javax.swing.JFrame {
      // Method to set booking data
     public void setBookingData(Booking booking, Room room, List<Addon> addons, 
                               List<Services> services, String destinationType, 
-                              String season, int bookingId, double finalAmount) {
-
+                              String season, int bookingId, double finalAmount, int roomQuantity) {
+        
         System.out.println("=== DEBUG: Setting Booking Data ===");
         System.out.println("Booking ID: " + bookingId);
         System.out.println("Final Amount: " + finalAmount);
         System.out.println("Room: " + (room != null ? room.getRoomType() : "null"));
+        System.out.println("Room Quantity: " + roomQuantity);
 
         this.booking = booking;
         this.selectedRoom = room;
@@ -73,11 +75,12 @@ public class ReservationSummary extends javax.swing.JFrame {
         this.destinationType = destinationType;
         this.season = season;
         this.bookingId = bookingId;
-        this.finalAmount = finalAmount; // Store the calculated amount
+        this.finalAmount = finalAmount;
+        this.roomQuantity = roomQuantity; // Store room quantity
 
         // Update all tables
         updateBookingInfoTable();
-        updateRoomSummaryTable();
+        updateRoomSummaryTable(); // This needs to use roomQuantity
         updateAddonsTable();
         updateServicesTable();
         updateTotalAmountTable();
@@ -104,19 +107,18 @@ public class ReservationSummary extends javax.swing.JFrame {
     private void updateRoomSummaryTable() {
         DefaultTableModel model = (DefaultTableModel) jTblRoomSummary.getModel();
         model.setRowCount(0);
-
-        // First, set the correct columns
-        model.setColumnIdentifiers(new String[]{"Room Type", "Duration", "Price per Night", "Total Cost"});
+        model.setColumnIdentifiers(new String[]{"Room Type", "Quantity", "Duration", "Price per Night", "Total Cost"});
 
         if (selectedRoom != null && booking != null) {
             double roomPrice = selectedRoom.getPrice(destinationType, season);
-            double totalRoomCost = roomPrice * booking.calculateNights();
+            double totalRoomCost = roomPrice * booking.calculateNights() * roomQuantity;
 
             model.addRow(new Object[]{
                 selectedRoom.getRoomType(),
+                roomQuantity + " room(s)",
                 booking.calculateNights() + " night(s)",
-                String.format("P %,.2f", roomPrice) + "/night",
-                String.format("P %,.2f", totalRoomCost)
+                String.format("₱ %,.2f", roomPrice) + "/night",
+                String.format("₱ %,.2f", totalRoomCost)
             });
         }
     }
@@ -214,14 +216,14 @@ public class ReservationSummary extends javax.swing.JFrame {
         double servicesTotal = 0;
         double discountTotal = 0;
 
-        // Calculate room total
+        // Calculate room total with quantity
         if (selectedRoom != null) {
-            roomTotal = selectedRoom.getPrice(destinationType, season) * booking.calculateNights();
+            roomTotal = selectedRoom.getPrice(destinationType, season) * booking.calculateNights() * roomQuantity;
             model.addRow(new Object[]{
-                "Room: " + selectedRoom.getRoomType(),
-                String.format("P %,.2f", roomTotal),
-                "P 0.00",
-                String.format("P %,.2f", roomTotal)
+                "Room: " + selectedRoom.getRoomType() + " × " + roomQuantity,
+                String.format("₱ %,.2f", roomTotal),
+                "₱ 0.00",
+                String.format("₱ %,.2f", roomTotal)
             });
         }
 
