@@ -131,7 +131,11 @@ public class RoomSelectionForm extends javax.swing.JFrame {
             this.destinationType = "Local"; // Default to Local
         }
 
-        this.season = determineSeason(booking.getCheckInDate());
+        // Use booking's season instead of calculating separately
+        this.season = booking.getSeason();
+        if (this.season == null) {
+            this.season = "Lean"; // Default
+        }
 
         updateValidationLimits();
         loadRoomsFromDatabase();
@@ -632,6 +636,8 @@ public class RoomSelectionForm extends javax.swing.JFrame {
         jLabel2 = new javax.swing.JLabel();
         cmbAvailServices = new javax.swing.JComboBox<>();
         jLabel3 = new javax.swing.JLabel();
+        jLabel23 = new javax.swing.JLabel();
+        cmbSelectRoomQuantity = new javax.swing.JComboBox<>();
         AddonPanel = new javax.swing.JPanel();
         cbBed = new javax.swing.JCheckBox();
         jLabel4 = new javax.swing.JLabel();
@@ -736,6 +742,10 @@ public class RoomSelectionForm extends javax.swing.JFrame {
 
         jLabel3.setText("Avail Amenities/Services?");
 
+        jLabel23.setText("Select Room Quantity");
+
+        cmbSelectRoomQuantity.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
         jPanel1Layout.setHorizontalGroup(
@@ -747,18 +757,24 @@ public class RoomSelectionForm extends javax.swing.JFrame {
                     .addComponent(jLabel1)
                     .addComponent(jLabel2)
                     .addComponent(cmbAvailAddons, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(cmbAvailServices, javax.swing.GroupLayout.PREFERRED_SIZE, 189, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel3))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 68, Short.MAX_VALUE)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                    .addComponent(cmbAvailServices, 0, 189, Short.MAX_VALUE)
+                    .addComponent(jLabel3)
+                    .addComponent(jLabel23)
+                    .addComponent(cmbSelectRoomQuantity, 0, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addContainerGap())
         );
         jPanel1Layout.setVerticalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel1Layout.createSequentialGroup()
-                .addComponent(jLabel1)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel1)
+                    .addComponent(jLabel23))
                 .addGap(12, 12, 12)
-                .addComponent(cmbRoomType, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(cmbRoomType, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(cmbSelectRoomQuantity, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel2)
@@ -1131,6 +1147,11 @@ public class RoomSelectionForm extends javax.swing.JFrame {
                 return;
             }
             
+            // Make sure booking has season calculated before proceeding
+            if (booking.getSeason() == null) {
+                booking.setSeason(booking.calculateSeason());
+            }
+            
             // Update room availability
             boolean roomUpdated = roomDAO.updateRoomAvailability(selectedRoomType, destinationType);
             if (!roomUpdated) {
@@ -1151,9 +1172,7 @@ public class RoomSelectionForm extends javax.swing.JFrame {
                 return;
             }
             
-            double roomPrice = selectedRoom.getPrice(destinationType, season);
-            
-            // Save booking
+            // Save booking (season will be calculated and saved in saveToDatabase method)
             BookingDAO bookingDAO = new BookingDAO();
             int bookingId = bookingDAO.saveBooking(booking);
             
@@ -1168,9 +1187,9 @@ public class RoomSelectionForm extends javax.swing.JFrame {
                 bookingDAO.saveBookingServices(bookingId, selectedServices);
             }
             
-            // Open the reservation summary form with all data
+            // Open the reservation summary form
             openReservationSummary(booking, selectedRoom, selectedAddons, 
-                      selectedServices, destinationType, season, bookingId);
+                      selectedServices, destinationType, bookingId);
             
         } catch (SQLException e) {
             JOptionPane.showMessageDialog(this, 
@@ -1181,66 +1200,67 @@ public class RoomSelectionForm extends javax.swing.JFrame {
     }
 }
 
-    private void openReservationSummary(Booking booking, Room room, List<Addon> addons, 
-                                       List<Services> services, String destType, 
-                                       String season, int bookingId) {
-        try {
-            ReservationSummary summaryForm = new ReservationSummary();
+private void openReservationSummary(Booking booking, Room room, List<Addon> addons, 
+                                   List<Services> services, String destType, 
+                                   int bookingId) {
+    try {
+        ReservationSummary summaryForm = new ReservationSummary();
 
-            // Calculate final amount here
-            double finalAmount = calculateFinalAmount(room, addons, services, destType, season, booking);
+        // Use the season from booking (already calculated)
+        String season = booking.getSeason();
+        
+        // Calculate final amount (without VAT)
+        double finalAmount = calculateFinalAmount(room, addons, services, destType, season, booking);
 
-            // Pass all data including the calculated amount
-            summaryForm.setBookingData(booking, room, addons, services, 
-                                      destType, season, bookingId, finalAmount);
+        // Pass all data including the calculated amount
+        summaryForm.setBookingData(booking, room, addons, services, 
+                                  destType, season, bookingId, finalAmount);
 
-            summaryForm.setLocationRelativeTo(null);
-            summaryForm.setVisible(true);
+        summaryForm.setLocationRelativeTo(null);
+        summaryForm.setVisible(true);
 
-            this.dispose();
+        this.dispose();
 
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this,
-                "Error opening reservation summary: " + e.getMessage(),
-                "Error", JOptionPane.ERROR_MESSAGE);
-            e.printStackTrace();
+    } catch (Exception e) {
+        JOptionPane.showMessageDialog(this,
+            "Error opening reservation summary: " + e.getMessage(),
+            "Error", JOptionPane.ERROR_MESSAGE);
+        e.printStackTrace();
+    }
+}
+
+// Helper method to calculate final amount (NO VAT)
+private double calculateFinalAmount(Room room, List<Addon> addons, 
+                                   List<Services> services, String destType, 
+                                   String season, Booking booking) {
+
+    // Calculate room total
+    double roomTotal = room.getPrice(destType, season) * booking.calculateNights();
+
+    // Calculate addons total
+    double addonsTotal = 0;
+    if (addons != null) {
+        for (Addon addon : addons) {
+            if (addon.isSelected() && addon.getQuantity() > 0) {
+                addonsTotal += addon.calculateTotalWithDiscount();
+            }
         }
     }
 
-    // Add this helper method to calculate final amount
-    private double calculateFinalAmount(Room room, List<Addon> addons, 
-                                       List<Services> services, String destType, 
-                                       String season, Booking booking) {
-
-        // Calculate room total
-        double roomTotal = room.getPrice(destType, season) * booking.calculateNights();
-
-        // Calculate addons total
-        double addonsTotal = 0;
-        if (addons != null) {
-            for (Addon addon : addons) {
-                if (addon.isSelected() && addon.getQuantity() > 0) {
-                    addonsTotal += addon.calculateTotalWithDiscount();
-                }
+    // Calculate services total
+    double servicesTotal = 0;
+    if (services != null) {
+        for (Services service : services) {
+            if (service.isSelected() && service.getQuantity() > 0) {
+                servicesTotal += service.calculateTotalWithDiscount(booking.calculateNights());
             }
         }
+    }
 
-        // Calculate services total
-        double servicesTotal = 0;
-        if (services != null) {
-            for (Services service : services) {
-                if (service.isSelected() && service.getQuantity() > 0) {
-                    servicesTotal += service.calculateTotalWithDiscount(booking.calculateNights());
-                }
-            }
-        }
+    // Calculate final amount (NO VAT)
+    double finalAmount = roomTotal + addonsTotal + servicesTotal;
 
-        // Calculate subtotal and VAT
-        double subtotal = roomTotal + addonsTotal + servicesTotal;
-        double vat = subtotal * 0.12;
-        double finalAmount = subtotal + vat;
-
-        return finalAmount;
+    return finalAmount;
     }//GEN-LAST:event_btnNextActionPerformed
 
     /**
@@ -1294,6 +1314,7 @@ public class RoomSelectionForm extends javax.swing.JFrame {
     private javax.swing.JComboBox<String> cmbAvailAddons;
     private javax.swing.JComboBox<String> cmbAvailServices;
     private javax.swing.JComboBox<String> cmbRoomType;
+    private javax.swing.JComboBox<String> cmbSelectRoomQuantity;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel10;
     private javax.swing.JLabel jLabel11;
@@ -1309,6 +1330,7 @@ public class RoomSelectionForm extends javax.swing.JFrame {
     private javax.swing.JLabel jLabel20;
     private javax.swing.JLabel jLabel21;
     private javax.swing.JLabel jLabel22;
+    private javax.swing.JLabel jLabel23;
     private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel4;
     private javax.swing.JLabel jLabel5;
