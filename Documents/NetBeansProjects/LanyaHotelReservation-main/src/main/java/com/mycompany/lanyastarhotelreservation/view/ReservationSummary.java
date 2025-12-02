@@ -213,7 +213,6 @@ public class ReservationSummary extends javax.swing.JFrame {
         double addonsTotal = 0;
         double servicesTotal = 0;
         double discountTotal = 0;
-        double grandTotal = 0;
 
         // Calculate room total
         if (selectedRoom != null) {
@@ -273,35 +272,20 @@ public class ReservationSummary extends javax.swing.JFrame {
             }
         }
 
-        // Calculate subtotal
-        double subtotal = roomTotal + addonsTotal + servicesTotal + discountTotal;
-        model.addRow(new Object[]{"", "", "", ""});
-        model.addRow(new Object[]{
-            "SUB TOTAL",
-            String.format("P %,.2f", subtotal),
-            String.format("P %,.2f", discountTotal),
-            String.format("P %,.2f", subtotal - discountTotal)
-        });
-
-        // Calculate VAT (12%)
-        double taxableAmount = subtotal - discountTotal;
-        double vat = taxableAmount * 0.12;
-        grandTotal = taxableAmount + vat;
-
-        model.addRow(new Object[]{
-            "VAT (12%)",
-            String.format("P %,.2f", vat),
-            "",
-            String.format("P %,.2f", vat)
-        });
+        // Calculate grand total (without VAT)
+        double grandTotal = roomTotal + addonsTotal + servicesTotal;
 
         // Add grand total
+        model.addRow(new Object[]{"", "", "", ""});
         model.addRow(new Object[]{
             "GRAND TOTAL",
             "",
-            "",
+            String.format("P %,.2f", discountTotal),
             String.format("P %,.2f", grandTotal)
         });
+
+        // Store the final amount (without VAT)
+        this.finalAmount = grandTotal;
     }
     /**
      * This method is called from within the constructor to initialize the form.

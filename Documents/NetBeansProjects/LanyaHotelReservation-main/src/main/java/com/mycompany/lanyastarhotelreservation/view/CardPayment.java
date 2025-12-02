@@ -115,34 +115,33 @@ public class CardPayment extends javax.swing.JFrame {
             String paymentResult = payment.processPayment();
             
             if ("CARD_PAYMENT_SUCCESS".equals(paymentResult)) {
-                // 9. Save payment to database
+                // Save payment to database
                 try {
                     PaymentDAO paymentDAO = new PaymentDAO();
                     int paymentId = paymentDAO.savePayment(payment);
-                    
-                    // 10. Show success message with masked card number
+
+                    // Show success message WITHOUT transaction ID
                     String message = String.format(
                         "✅ CARD PAYMENT SUCCESSFUL!\n\n" +
                         "Payment ID:        %d\n" +
                         "Amount Charged:    P %,.2f\n" +
-                        "Card Used:         %s\n" +
-                        "Transaction ID:    %s\n\n" +
+                        "Card Used:         %s\n\n" +
                         "Thank you for your payment!\n" +
                         "A receipt has been sent to your email.",
-                        paymentId, totalAmount, payment.getMaskedCardNumber(), payment.getTransactionId()
+                        paymentId, totalAmount, payment.getMaskedCardNumber()
                     );
-                    
+
                     JOptionPane.showMessageDialog(this, message, 
                         "Payment Approved", JOptionPane.INFORMATION_MESSAGE);
-                    
-                    // 11. Clear sensitive data
+
+                    // Clear sensitive data
                     jTxtCardNumber.setText("");
                     jTxtExpiryDate.setText("");
                     jTxtCCV.setText("");
-                    
-                    // 12. Close window after successful payment
+
+                    // Close window after successful payment
                     this.dispose();
-                    
+
                 } catch (SQLException e) {
                     JOptionPane.showMessageDialog(this, 
                         "Failed to save payment record: " + e.getMessage(), 

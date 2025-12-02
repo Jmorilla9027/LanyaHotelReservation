@@ -12,15 +12,12 @@ public class Payment {
     private int paymentId;
     private int bookingId;
     private double totalAmount;
-    private double vatAmount;
-    private double finalAmount;
     private String paymentMethod;
     private String paymentStatus;
     private String cardLastFour;
     private LocalDateTime transactionDate;
-    private String transactionId;
     
-    // Additional fields for processing
+    // Processing fields (not stored in DB)
     private String cardNumber;
     private String ccv;
     private double cashReceived;
@@ -37,8 +34,6 @@ public class Payment {
         this.totalAmount = totalAmount;
         this.cashReceived = cashReceived;
         this.paymentMethod = "CASH";
-        this.finalAmount = totalAmount;
-        this.vatAmount = totalAmount * 0.12 / 1.12; // Extract VAT from total
     }
     
     public Payment(double totalAmount, String cardNumber, String ccv, int bookingId) {
@@ -48,8 +43,6 @@ public class Payment {
         this.cardNumber = cardNumber;
         this.ccv = ccv;
         this.paymentMethod = "CARD";
-        this.finalAmount = totalAmount;
-        this.vatAmount = totalAmount * 0.12 / 1.12; // Extract VAT from total
         
         // Store last 4 digits of card
         if (cardNumber != null && cardNumber.length() >= 4) {
@@ -58,7 +51,7 @@ public class Payment {
         }
     }
     
-    // MAIN VALIDATION METHOD
+    // Validation method
     public String validate() {
         if (bookingId <= 0) {
             return "Booking ID is required";
@@ -78,7 +71,6 @@ public class Payment {
     }
     
     private String validateCard() {
-        // Card number validation
         if (cardNumber == null || cardNumber.trim().isEmpty()) {
             return "Card number is required";
         }
@@ -92,7 +84,6 @@ public class Payment {
             return "Card number must contain only numbers";
         }
         
-        // CCV validation
         if (ccv == null || ccv.trim().isEmpty()) {
             return "CCV is required";
         }
@@ -109,8 +100,8 @@ public class Payment {
             return "Cash received must be greater than 0";
         }
         
-        if (cashReceived < finalAmount) {
-            return String.format("Insufficient cash. Need: P %,.2f more", finalAmount - cashReceived);
+        if (cashReceived < totalAmount) {
+            return String.format("Insufficient cash. Need: P %,.2f more", totalAmount - cashReceived);
         }
         
         return "VALID";
@@ -125,14 +116,12 @@ public class Payment {
         if ("CARD".equals(paymentMethod)) {
             // Simulate card processing
             try {
-                Thread.sleep(1000); // Simulate processing time
+                Thread.sleep(1000);
                 
-                // Simple simulation: last digit even = success
                 String cleanCard = cardNumber.replaceAll("\\s+", "");
                 char lastDigit = cleanCard.charAt(cleanCard.length() - 1);
                 
                 if (Character.getNumericValue(lastDigit) % 2 == 0) {
-                    this.transactionId = "CARD-" + System.currentTimeMillis();
                     this.paymentStatus = "COMPLETED";
                     return "CARD_PAYMENT_SUCCESS";
                 } else {
@@ -145,15 +134,14 @@ public class Payment {
             }
         } else {
             // Cash payment always succeeds if validated
-            this.transactionId = "CASH-" + System.currentTimeMillis();
             this.paymentStatus = "COMPLETED";
             return "CASH_PAYMENT_SUCCESS";
         }
     }
     
     public double calculateChange() {
-        if ("CASH".equals(paymentMethod) && cashReceived >= finalAmount) {
-            return cashReceived - finalAmount;
+        if ("CASH".equals(paymentMethod) && cashReceived >= totalAmount) {
+            return cashReceived - totalAmount;
         }
         return 0;
     }
@@ -176,12 +164,6 @@ public class Payment {
     public double getTotalAmount() { return totalAmount; }
     public void setTotalAmount(double totalAmount) { this.totalAmount = totalAmount; }
     
-    public double getVatAmount() { return vatAmount; }
-    public void setVatAmount(double vatAmount) { this.vatAmount = vatAmount; }
-    
-    public double getFinalAmount() { return finalAmount; }
-    public void setFinalAmount(double finalAmount) { this.finalAmount = finalAmount; }
-    
     public String getPaymentMethod() { return paymentMethod; }
     public void setPaymentMethod(String paymentMethod) { this.paymentMethod = paymentMethod; }
     
@@ -193,9 +175,6 @@ public class Payment {
     
     public LocalDateTime getTransactionDate() { return transactionDate; }
     public void setTransactionDate(LocalDateTime transactionDate) { this.transactionDate = transactionDate; }
-    
-    public String getTransactionId() { return transactionId; }
-    public void setTransactionId(String transactionId) { this.transactionId = transactionId; }
     
     public String getCardNumber() { return cardNumber; }
     public void setCardNumber(String cardNumber) { 

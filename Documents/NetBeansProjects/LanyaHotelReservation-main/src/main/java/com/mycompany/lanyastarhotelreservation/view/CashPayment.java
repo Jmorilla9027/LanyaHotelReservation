@@ -99,41 +99,40 @@ public class CashPayment extends javax.swing.JFrame {
             String paymentResult = payment.processPayment();
             
             if ("CASH_PAYMENT_SUCCESS".equals(paymentResult)) {
-                // 8. Save payment to database
+                // Save payment to database
                 try {
                     PaymentDAO paymentDAO = new PaymentDAO();
                     int paymentId = paymentDAO.savePayment(payment);
-                    
-                    // 9. Calculate change using Payment model
+
+                    // Calculate change
                     double change = payment.calculateChange();
-                    
-                    // 10. Show success message
+
+                    // Show success message WITHOUT transaction ID
                     String message = String.format(
                         "✅ CASH PAYMENT SUCCESSFUL!\n\n" +
                         "Payment ID:        %d\n" +
                         "Total Amount:     P %,.2f\n" +
                         "Cash Received:    P %,.2f\n" +
-                        "Change Due:       P %,.2f\n" +
-                        "Transaction ID:   %s\n\n" +
+                        "Change Due:       P %,.2f\n\n" +
                         "Thank you for your payment!",
-                        paymentId, amountToPay, cashReceived, change, payment.getTransactionId()
+                        paymentId, amountToPay, cashReceived, change
                     );
-                    
+
                     JOptionPane.showMessageDialog(this, message, 
                         "Payment Complete", JOptionPane.INFORMATION_MESSAGE);
-                    
-                    // 11. Clear cash amount field
+
+                    // Clear cash amount field
                     jTxtCashPayment.setText("");
-                    
-                    // 12. Ask if user wants to close window
+
+                    // Ask if user wants to close window
                     int option = JOptionPane.showConfirmDialog(this,
                         "Close payment window?",
                         "Payment Complete", JOptionPane.YES_NO_OPTION);
-                    
+
                     if (option == JOptionPane.YES_OPTION) {
                         this.dispose();
                     }
-                    
+
                 } catch (SQLException e) {
                     JOptionPane.showMessageDialog(this, 
                         "Failed to save payment record: " + e.getMessage(), 
@@ -232,7 +231,7 @@ public class CashPayment extends javax.swing.JFrame {
         );
 
         jLabel1.setFont(new java.awt.Font("Segoe UI", 0, 36)); // NOI18N
-        jLabel1.setText("CARD PAYMENT");
+        jLabel1.setText("CASH PAYMENT");
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);

@@ -15,30 +15,26 @@ import java.time.LocalDateTime;
 public class PaymentDAO {
     
     public int savePayment(Payment payment) throws SQLException {
-        String sql = "INSERT INTO payments (booking_id, total_amount, vat_amount, final_amount, " +
-                    "payment_method, payment_status, card_last_four, transaction_date, transaction_id) " +
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO payments (booking_id, total_amount, payment_method, " +
+                    "payment_status, card_last_four, transaction_date) " +
+                    "VALUES (?, ?, ?, ?, ?, ?)";
         
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             
             stmt.setInt(1, payment.getBookingId());
             stmt.setDouble(2, payment.getTotalAmount());
-            stmt.setDouble(3, payment.getVatAmount());
-            stmt.setDouble(4, payment.getFinalAmount());
-            stmt.setString(5, payment.getPaymentMethod());
-            stmt.setString(6, payment.getPaymentStatus());
-            stmt.setString(7, payment.getCardLastFour());
+            stmt.setString(3, payment.getPaymentMethod());
+            stmt.setString(4, payment.getPaymentStatus());
+            stmt.setString(5, payment.getCardLastFour());
             
-            // Handle transaction date - use current timestamp if null
+            // Handle transaction date
             LocalDateTime transactionDate = payment.getTransactionDate();
             if (transactionDate == null) {
-                stmt.setTimestamp(8, new Timestamp(System.currentTimeMillis()));
+                stmt.setTimestamp(6, new Timestamp(System.currentTimeMillis()));
             } else {
-                stmt.setTimestamp(8, Timestamp.valueOf(transactionDate));
+                stmt.setTimestamp(6, Timestamp.valueOf(transactionDate));
             }
-            
-            stmt.setString(9, payment.getTransactionId());
             
             int affectedRows = stmt.executeUpdate();
             
@@ -50,7 +46,7 @@ public class PaymentDAO {
                 if (rs.next()) {
                     int paymentId = rs.getInt(1);
                     payment.setPaymentId(paymentId);
-                    return paymentId; // Return payment_id
+                    return paymentId;
                 } else {
                     throw new SQLException("Creating payment failed, no ID obtained.");
                 }
@@ -72,8 +68,6 @@ public class PaymentDAO {
                 payment.setPaymentId(rs.getInt("payment_id"));
                 payment.setBookingId(rs.getInt("booking_id"));
                 payment.setTotalAmount(rs.getDouble("total_amount"));
-                payment.setVatAmount(rs.getDouble("vat_amount"));
-                payment.setFinalAmount(rs.getDouble("final_amount"));
                 payment.setPaymentMethod(rs.getString("payment_method"));
                 payment.setPaymentStatus(rs.getString("payment_status"));
                 payment.setCardLastFour(rs.getString("card_last_four"));
@@ -83,7 +77,6 @@ public class PaymentDAO {
                     payment.setTransactionDate(timestamp.toLocalDateTime());
                 }
                 
-                payment.setTransactionId(rs.getString("transaction_id"));
                 return payment;
             }
         }
@@ -98,21 +91,6 @@ public class PaymentDAO {
             
             stmt.setString(1, status);
             stmt.setInt(2, paymentId);
-            
-            int affectedRows = stmt.executeUpdate();
-            return affectedRows > 0;
-        }
-    }
-    
-    public boolean updatePaymentWithTransaction(int paymentId, String transactionId, String status) throws SQLException {
-        String sql = "UPDATE payments SET transaction_id = ?, payment_status = ? WHERE payment_id = ?";
-        
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            
-            stmt.setString(1, transactionId);
-            stmt.setString(2, status);
-            stmt.setInt(3, paymentId);
             
             int affectedRows = stmt.executeUpdate();
             return affectedRows > 0;
