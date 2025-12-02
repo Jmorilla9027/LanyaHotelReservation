@@ -294,9 +294,6 @@ private void updateBookingInfoTable() {
         }
     }
     
-    private void updateDiscountTables() {
-        // Already handled in updateAddonsTable and updateServicesTable
-    }
         
     private void updateTotalAmountTable() {
         DefaultTableModel model = (DefaultTableModel) jTblTotalAmount.getModel();

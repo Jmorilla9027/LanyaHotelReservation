@@ -149,21 +149,21 @@ public class BookingDAO {
     
     public List<Addon> getBookingAddons(int bookingId) throws SQLException {
         List<Addon> addons = new ArrayList<>();
+        String sql = "SELECT * FROM booking_addons WHERE booking_id = ?";
 
-        // ✅ Use try-with-resources like your other methods
         try (Connection conn = DBConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement("SELECT * FROM booking_addons WHERE booking_id = ?")) {
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setInt(1, bookingId);
-            ResultSet rs = stmt.executeQuery();
-
-            while (rs.next()) {
-                Addon addon = new Addon();
-                addon.setName(rs.getString("addon_name"));
-                addon.setQuantity(rs.getInt("quantity"));
-                addon.setRate(rs.getDouble("rate"));
-                addon.setDiscountCount(rs.getInt("discount_count"));
-                addons.add(addon);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    Addon addon = new Addon();
+                    addon.setName(rs.getString("addon_name"));
+                    addon.setQuantity(rs.getInt("quantity"));
+                    addon.setRate(rs.getDouble("rate"));
+                    addon.setDiscountCount(rs.getInt("discount_count"));
+                    addons.add(addon);
+                }
             }
         }
         return addons;
@@ -171,20 +171,21 @@ public class BookingDAO {
 
     public List<Services> getBookingServices(int bookingId) throws SQLException {
         List<Services> services = new ArrayList<>();
+        String sql = "SELECT * FROM booking_services WHERE booking_id = ?";
 
         try (Connection conn = DBConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement("SELECT * FROM booking_services WHERE booking_id = ?")) {
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setInt(1, bookingId);
-            ResultSet rs = stmt.executeQuery();
-
-            while (rs.next()) {
-                Services service = new Services();
-                service.setName(rs.getString("service_name"));
-                service.setQuantity(rs.getInt("quantity"));
-                service.setRate(rs.getDouble("rate"));
-                service.setDiscountCount(rs.getInt("discount_count"));
-                services.add(service);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    Services service = new Services();
+                    service.setName(rs.getString("service_name"));
+                    service.setQuantity(rs.getInt("quantity"));
+                    service.setRate(rs.getDouble("rate"));
+                    service.setDiscountCount(rs.getInt("discount_count"));
+                    services.add(service);
+                }
             }
         }
         return services;

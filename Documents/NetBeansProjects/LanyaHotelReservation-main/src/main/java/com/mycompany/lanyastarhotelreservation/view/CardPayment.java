@@ -68,37 +68,29 @@ public class CardPayment extends javax.swing.JFrame {
             // 1. Get card details from text fields
             String cardNumber = jTxtCardNumber.getText().trim();
             String ccv = jTxtCCV.getText().trim();
-            
-            // 2. Validate required fields
-            if (cardNumber.isEmpty() || ccv.isEmpty()) {
-                JOptionPane.showMessageDialog(this, 
-                    "Please fill in all card details", 
-                    "Missing Information", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-            
-            // 3. Check if total amount is set
+
+            // 2. Check if total amount is set
             if (totalAmount <= 0) {
                 JOptionPane.showMessageDialog(this, 
                     "Invalid payment amount", 
                     "Amount Error", JOptionPane.ERROR_MESSAGE);
                 return;
             }
-            
-            // 4. Check if bookingId is set
+
+            // 3. Check if bookingId is set
             if (bookingId <= 0) {
                 JOptionPane.showMessageDialog(this, 
                     "Booking ID is missing", 
                     "Booking Error", JOptionPane.ERROR_MESSAGE);
                 return;
             }
-            
-            // 5. Create Payment object with bookingId
+
+            // 4. Create Payment object with bookingId
             Payment payment = new Payment(totalAmount, cardNumber, ccv, bookingId);
-            
-            // 6. Validate using Payment model
+
+            // 5. Validate using Payment model (this handles empty fields too)
             String validationResult = payment.validate();
-            
+
             if (!"VALID".equals(validationResult)) {
                 JOptionPane.showMessageDialog(this, 
                     validationResult, 
@@ -170,12 +162,6 @@ public class CardPayment extends javax.swing.JFrame {
     }
     
     // Helper method to format card number with spaces
-    private String formatCardNumber(String cardNumber) {
-        if (cardNumber == null || cardNumber.length() != 16) {
-            return cardNumber;
-        }
-        return cardNumber.replaceAll("(.{4})", "$1 ").trim();
-    }
     
     /**
      * This method is called from within the constructor to initialize the form.

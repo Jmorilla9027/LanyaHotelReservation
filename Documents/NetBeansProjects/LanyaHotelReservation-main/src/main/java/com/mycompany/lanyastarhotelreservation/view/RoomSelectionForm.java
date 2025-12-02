@@ -153,8 +153,7 @@ public class RoomSelectionForm extends javax.swing.JFrame {
         return (int) Math.ceil((double) totalGuests / room.getCapacity());
     }
     private void loadRoomsFromDatabase() {
-        List<Room> availableRooms = roomDAO.getAvailableRooms(destinationType, season, totalGuests);
-        for (Room room : availableRooms) {
+        List<Room> availableRooms = roomDAO.getAvailableRooms(destinationType, season, totalGuests); {
         }
 
         updateRoomTable(availableRooms);
@@ -1407,24 +1406,20 @@ private void updateRoomTable(List<Room> availableRooms) {
             if (!selectedAddons.isEmpty()) {
                 try {
                     bookingDAO.saveBookingAddons(bookingId, selectedAddons);
-                    System.out.println("Saved " + selectedAddons.size() + " addons");
                 } catch (SQLException e) {
                     JOptionPane.showMessageDialog(this, 
                         "Warning: Addons could not be saved: " + e.getMessage(), 
                         "Partial Save", JOptionPane.WARNING_MESSAGE);
-                    e.printStackTrace();
                 }
             }
-            
+
             if (!selectedServices.isEmpty()) {
                 try {
                     bookingDAO.saveBookingServices(bookingId, selectedServices);
-                    System.out.println("Saved " + selectedServices.size() + " services");
                 } catch (SQLException e) {
                     JOptionPane.showMessageDialog(this, 
                         "Warning: Services could not be saved: " + e.getMessage(), 
                         "Partial Save", JOptionPane.WARNING_MESSAGE);
-                    e.printStackTrace();
                 }
             }
             
