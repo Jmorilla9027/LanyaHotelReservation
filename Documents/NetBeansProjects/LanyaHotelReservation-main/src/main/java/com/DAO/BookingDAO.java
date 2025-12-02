@@ -7,15 +7,21 @@ import com.mycompany.lanyastarhotelreservation.util.DBConnection;
 import com.mycompany.lanyastarhotelreservation.model.Booking;
 import com.mycompany.lanyastarhotelreservation.model.Addon;
 import com.mycompany.lanyastarhotelreservation.model.Services;
+import com.mycompany.lanyastarhotelreservation.util.DBConnection;
 import java.sql.*;
 import java.util.List;
+import java.util.ArrayList;
 import java.time.LocalDate;
 /**
  *
  * @author johnm
  */
 public class BookingDAO {
+    private Connection connection;  // 📍 Add this
     
+    public BookingDAO() {  // 📍 Add this constructor
+        this.connection = DBConnection.getConnection();
+    }
     public int saveBooking(Booking booking) throws SQLException {
        String sql = "INSERT INTO bookings (destination_type, destination, check_in_date, " +
                    "check_out_date, lead_guest_age, number_of_adults, number_of_children, " +
@@ -139,6 +145,49 @@ public class BookingDAO {
             }
             stmt.executeBatch();
         }
+    }
+    
+    public List<Addon> getBookingAddons(int bookingId) throws SQLException {
+        List<Addon> addons = new ArrayList<>();
+
+        // ✅ Use try-with-resources like your other methods
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement("SELECT * FROM booking_addons WHERE booking_id = ?")) {
+
+            stmt.setInt(1, bookingId);
+            ResultSet rs = stmt.executeQuery();
+
+            while (rs.next()) {
+                Addon addon = new Addon();
+                addon.setName(rs.getString("addon_name"));
+                addon.setQuantity(rs.getInt("quantity"));
+                addon.setRate(rs.getDouble("rate"));
+                addon.setDiscountCount(rs.getInt("discount_count"));
+                addons.add(addon);
+            }
+        }
+        return addons;
+    }
+
+    public List<Services> getBookingServices(int bookingId) throws SQLException {
+        List<Services> services = new ArrayList<>();
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement("SELECT * FROM booking_services WHERE booking_id = ?")) {
+
+            stmt.setInt(1, bookingId);
+            ResultSet rs = stmt.executeQuery();
+
+            while (rs.next()) {
+                Services service = new Services();
+                service.setName(rs.getString("service_name"));
+                service.setQuantity(rs.getInt("quantity"));
+                service.setRate(rs.getDouble("rate"));
+                service.setDiscountCount(rs.getInt("discount_count"));
+                services.add(service);
+            }
+        }
+        return services;
     }
 }
 

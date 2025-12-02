@@ -7,6 +7,9 @@ import com.mycompany.lanyastarhotelreservation.model.Booking;
 import com.mycompany.lanyastarhotelreservation.model.Addon;
 import com.mycompany.lanyastarhotelreservation.model.Services;
 import com.mycompany.lanyastarhotelreservation.model.Room;
+import com.DAO.BookingDAO;
+import com.DAO.RoomDAO;
+import javax.swing.JOptionPane;
 import java.util.List;
 import javax.swing.table.DefaultTableModel;
 
@@ -27,25 +30,43 @@ public class ReservationSummary extends javax.swing.JFrame {
     /**
      * Creates new form ReservationSummary
      */
+    public ReservationSummary(int bookingId) {  // Add parameter here
+        initComponents();
+
+        // Call the new method
+        initializeTables();
+
+        // Load data from database
+        loadBookingFromDatabase(bookingId);  // Call the new method
+    }
+
+    // Keep the old constructor too (for compatibility)
     public ReservationSummary() {
         initComponents();
+        initializeTables();
+        // Don't load any booking data
+    }
     
+    private void initializeTables() {
+    // Setup Addons table
     jTblAddons.setModel(new javax.swing.table.DefaultTableModel(
         new Object [][] {},
         new String [] {"NAME", "QUANTITY", "ORIGINAL PRICE", "DISCOUNT", "TOTAL"}
     ));
 
+    // Setup Services table
     jTblServices.setModel(new javax.swing.table.DefaultTableModel(
         new Object [][] {},
         new String [] {"NAME", "DETAILS", "ORIGINAL PRICE", "DISCOUNT", "TOTAL"}
     ));
 
+    // Setup Total Amount table
     jTblTotalAmount.setModel(new javax.swing.table.DefaultTableModel(
         new Object [][] {},
         new String [] {"ITEM", "ORIGINAL PRICE", "DISCOUNT", "TOTAL"}
     ));
     
-    // Also fix the discount tables
+    // Setup Discount tables
     jTblDiscAddons.setModel(new javax.swing.table.DefaultTableModel(
         new Object [][] {},
         new String [] {"NAME", "QUANTITY", "DISCOUNT AMOUNT"}
@@ -55,19 +76,12 @@ public class ReservationSummary extends javax.swing.JFrame {
         new Object [][] {},
         new String [] {"NAME", "QUANTITY", "DISCOUNT AMOUNT"}
     ));
-
-    }
+}
      // Method to set booking data
     public void setBookingData(Booking booking, Room room, List<Addon> addons, 
                               List<Services> services, String destinationType, 
                               String season, int bookingId, double finalAmount, int roomQuantity) {
         
-        System.out.println("=== DEBUG: Setting Booking Data ===");
-        System.out.println("Booking ID: " + bookingId);
-        System.out.println("Final Amount: " + finalAmount);
-        System.out.println("Room: " + (room != null ? room.getRoomType() : "null"));
-        System.out.println("Room Quantity: " + roomQuantity);
-
         this.booking = booking;
         this.selectedRoom = room;
         this.selectedAddons = addons;
@@ -86,7 +100,46 @@ public class ReservationSummary extends javax.swing.JFrame {
         updateTotalAmountTable();
     }
 
-    
+    public void loadBookingFromDatabase(int bookingId) {
+        try {
+            // 1. Load booking details
+            BookingDAO bookingDAO = new BookingDAO();
+            Booking booking = bookingDAO.getBookingById(bookingId);
+
+            if (booking == null) {
+                JOptionPane.showMessageDialog(this, "Booking not found!", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            // 2. Load room details (simplified - you might need to adjust)
+            RoomDAO roomDAO = new RoomDAO();
+            Room room = roomDAO.getRoomByType("Standard", booking.getDestinationType()); // Simplified
+
+            // 3. Load addons and services
+            List<Addon> addons = bookingDAO.getBookingAddons(bookingId);
+            List<Services> services = bookingDAO.getBookingServices(bookingId);
+
+            // 4. Calculate total (simplified)
+            double total = 0;
+            if (room != null) {
+                total = room.getPrice(booking.getDestinationType(), booking.getSeason()) 
+                       * booking.calculateNights();
+            }
+
+            // 5. Set the data
+            setBookingData(booking, room, addons, services, 
+                          booking.getDestinationType(), 
+                          booking.getSeason(), 
+                          bookingId, 
+                          total, 
+                          1); // Default 1 room
+
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, 
+                "Error loading booking: " + e.getMessage(), 
+                "Database Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
     private void updateBookingInfoTable() {
         DefaultTableModel model = (DefaultTableModel) jTblBookingFormSummary.getModel();
         model.setRowCount(0);

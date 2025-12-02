@@ -52,9 +52,7 @@ public class RoomSelectionForm extends javax.swing.JFrame {
         // Load services from database
         services = servicesDAO.getAllServices();
         
-        // Debug to see what's loaded
-        System.out.println("Loaded " + addons.size() + " addons from database");
-        System.out.println("Loaded " + services.size() + " services from database");
+        
     }
 
     private void initializeForm() {
@@ -128,7 +126,6 @@ public class RoomSelectionForm extends javax.swing.JFrame {
         // Add null check for destinationType
         this.destinationType = booking.getDestinationType();
         if (this.destinationType == null) {
-            System.err.println("ERROR: destinationType is null from booking object");
             this.destinationType = "Local"; // Default to Local
         }
 
@@ -150,16 +147,7 @@ public class RoomSelectionForm extends javax.swing.JFrame {
     }
     private void loadRoomsFromDatabase() {
         List<Room> availableRooms = roomDAO.getAvailableRooms(destinationType, season, totalGuests);
-
-        // DEBUG: See what rooms are being returned
-        System.out.println("=== ROOM FILTERING DEBUG ===");
-        System.out.println("Total Guests: " + totalGuests);
-        System.out.println("Available Rooms Found: " + availableRooms.size());
         for (Room room : availableRooms) {
-            System.out.println("Room: " + room.getRoomType() + 
-                              " | Capacity: " + room.getCapacity() + 
-                              " + " + room.getExtraBedCount() + " extra beds = " + 
-                              (room.getCapacity() + room.getExtraBedCount()));
         }
 
         updateRoomTable(availableRooms);
@@ -271,14 +259,10 @@ private void updateRoomTable(List<Room> availableRooms) {
         
         // Update room quantity combo box - Pass the selected room
         updateRoomQuantityComboBox(selectedRoom);
-        
-        System.out.println("DEBUG: Auto-selected " + selectedRoom.getRoomType() + 
-                          " at row " + rowToSelect + " for " + totalGuests + " guests");
     }
 }
     private void updateRoomQuantityComboBox(Room selectedRoom) {
     if (selectedRoom == null) {
-        System.err.println("ERROR: selectedRoom is null in updateRoomQuantityComboBox");
         return;
     }
     
@@ -299,9 +283,6 @@ private void updateRoomTable(List<Room> availableRooms) {
     if (roomsNeeded <= maxRooms) {
         cmbSelectRoomQuantity.setSelectedItem(String.valueOf(roomsNeeded));
     }
-    
-    System.out.println("DEBUG: Updated room quantity combo box for " + selectedRoom.getRoomType() + 
-                      " | Rooms needed: " + roomsNeeded + " | Max available: " + maxRooms);
 }
     private void showRecommendedRoom(Room recommendedRoom) {
         int roomsNeeded = calculateRoomsNeeded(recommendedRoom, totalGuests);
@@ -345,8 +326,6 @@ private void updateRoomTable(List<Room> availableRooms) {
             roomsNeeded
         );
     }
-    
-    System.out.println("RECOMMENDATION: " + message);
 }    
     private String determineSeason(LocalDate checkInDate) {
         if (checkInDate == null) return "Lean";
@@ -366,10 +345,7 @@ private void updateRoomTable(List<Room> availableRooms) {
         cmbRoomType.setModel(new javax.swing.DefaultComboBoxModel<>(roomTypes.toArray(new String[0])));
     }
 
-    private void updateSeasonInfo() {
-        System.out.println("Destination: " + destinationType + " | Season: " + season + 
-                          " | Guests: " + totalGuests + " | Nights: " + nightsStay);
-    }
+    private void updateSeasonInfo() {}
     
     
     private void updateValidationLimits() {
@@ -1247,8 +1223,6 @@ private void updateRoomTable(List<Room> availableRooms) {
         selectedRoom = roomDAO.getRoomByType(selectedRoomType, destinationType);
         if (selectedRoom != null) {
             updateRoomQuantityComboBox(selectedRoom);
-            System.out.println("DEBUG: User selected " + selectedRoomType + 
-                              " from combo box, updated quantity options");
         }
     }
     }//GEN-LAST:event_cmbRoomTypeActionPerformed
@@ -1347,67 +1321,28 @@ private void updateRoomTable(List<Room> availableRooms) {
                                        List<Services> services, String destType, 
                                        int bookingId, int roomQuantity) {
         try {
-            ReservationSummary summaryForm = new ReservationSummary();
+            // ✅ New way - pass bookingId to constructor
+            ReservationSummary summaryForm = new ReservationSummary(bookingId);
 
-            String season = booking.getSeason();
-
-            // Calculate final amount with room quantity
-            double finalAmount = calculateFinalAmount(room, addons, services, destType, season, booking, roomQuantity);
-
-            // Pass all data including the calculated amount and room quantity
-            summaryForm.setBookingData(booking, room, addons, services, 
-                                      destType, season, bookingId, finalAmount, roomQuantity);
+            // REMOVE these old lines (we're loading from DB now):
+            // String season = booking.getSeason();
+            // double finalAmount = calculateFinalAmount(...);
+            // summaryForm.setBookingData(...);
 
             summaryForm.setLocationRelativeTo(null);
             summaryForm.setVisible(true);
-
             this.dispose();
-
         } catch (Exception e) {
             JOptionPane.showMessageDialog(this,
                 "Error opening reservation summary: " + e.getMessage(),
                 "Error", JOptionPane.ERROR_MESSAGE);
-            e.printStackTrace();
         }
     }
-
-
-    // Helper method to calculate final amount (NO VAT)
-    private double calculateFinalAmount(Room room, List<Addon> addons, 
-                                      List<Services> services, String destType, 
-                                      String season, Booking booking, int roomQuantity) {
-
-       // Calculate room total with quantity
-       double roomTotal = room.getPrice(destType, season) * booking.calculateNights() * roomQuantity;
-
-       double addonsTotal = 0;
-       if (addons != null) {
-           for (Addon addon : addons) {
-               if (addon.isSelected() && addon.getQuantity() > 0) {
-                   addonsTotal += addon.calculateTotalWithDiscount();
-               }
-           }
-       }
-
-       double servicesTotal = 0;
-       if (services != null) {
-           for (Services service : services) {
-               if (service.isSelected() && service.getQuantity() > 0) {
-                   servicesTotal += service.calculateTotalWithDiscount(booking.calculateNights());
-               }
-           }
-       }
-
-       // Calculate final amount (NO VAT)
-       double finalAmount = roomTotal + addonsTotal + servicesTotal;
-
-       return finalAmount;
-   }
     private void cmbSelectRoomQuantityActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cmbSelectRoomQuantityActionPerformed
         // TODO add your handling code here:
     String selectedQuantity = (String) cmbSelectRoomQuantity.getSelectedItem();
     if (selectedQuantity != null && !selectedQuantity.equals("--Select Quantity--")) {
-        System.out.println("DEBUG: User selected room quantity: " + selectedQuantity);
+        
     }
     }//GEN-LAST:event_cmbSelectRoomQuantityActionPerformed
 
