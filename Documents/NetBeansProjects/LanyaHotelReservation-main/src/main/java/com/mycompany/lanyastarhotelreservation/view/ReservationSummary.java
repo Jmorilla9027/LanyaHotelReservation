@@ -7,6 +7,9 @@ import com.mycompany.lanyastarhotelreservation.model.Booking;
 import com.mycompany.lanyastarhotelreservation.model.Addon;
 import com.mycompany.lanyastarhotelreservation.model.Services;
 import com.mycompany.lanyastarhotelreservation.model.Room;
+import com.mycompany.lanyastarhotelreservation.model.Guest;
+import java.sql.*;
+import com.DAO.GuestDAO;
 import com.DAO.BookingDAO;
 import com.DAO.RoomDAO;
 import javax.swing.JOptionPane;
@@ -140,14 +143,51 @@ public class ReservationSummary extends javax.swing.JFrame {
                 "Database Error", JOptionPane.ERROR_MESSAGE);
         }
     }
-    private void updateBookingInfoTable() {
-        DefaultTableModel model = (DefaultTableModel) jTblBookingFormSummary.getModel();
-        model.setRowCount(0);
-        
-        if (booking != null) {
+private void updateBookingInfoTable() {
+    DefaultTableModel model = (DefaultTableModel) jTblBookingFormSummary.getModel();
+    model.setRowCount(0);
+    
+    if (booking != null) {
+        try {
+            // ⭐⭐ LOAD GUEST USING GUESTDAO ⭐⭐
+            GuestDAO guestDAO = new GuestDAO();
+            Guest guest = guestDAO.getGuestByBookingId(bookingId);
+            
+            if (guest != null) {
+                model.addRow(new Object[]{
+                    bookingId,
+                    guest.getName(),
+                    guest.getEmail(),
+                    guest.getPhone(),
+                    booking.getLeadGuestAge(),
+                    booking.getNumberOfAdults(),
+                    booking.getNumberOfChildren(),
+                    booking.getCheckInDate(),
+                    booking.getCheckOutDate()
+                });
+            } else {
+                // Fallback if no guest found
+                model.addRow(new Object[]{
+                    bookingId,
+                    "Guest",
+                    "N/A",
+                    "N/A",
+                    booking.getLeadGuestAge(),
+                    booking.getNumberOfAdults(),
+                    booking.getNumberOfChildren(),
+                    booking.getCheckInDate(),
+                    booking.getCheckOutDate()
+                });
+            }
+            
+        } catch (SQLException e) {
+            e.printStackTrace();
+            // Fallback to basic info
             model.addRow(new Object[]{
                 bookingId,
-                "Lead Guest", // You might want to add a name field to Booking model
+                "Guest",
+                "N/A",
+                "N/A",
                 booking.getLeadGuestAge(),
                 booking.getNumberOfAdults(),
                 booking.getNumberOfChildren(),
@@ -156,6 +196,7 @@ public class ReservationSummary extends javax.swing.JFrame {
             });
         }
     }
+}
     
     private void updateRoomSummaryTable() {
         DefaultTableModel model = (DefaultTableModel) jTblRoomSummary.getModel();

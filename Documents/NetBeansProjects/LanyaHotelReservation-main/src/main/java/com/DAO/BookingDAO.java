@@ -3,9 +3,9 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
 package com.DAO;
-import com.mycompany.lanyastarhotelreservation.util.DBConnection;
 import com.mycompany.lanyastarhotelreservation.model.Booking;
 import com.mycompany.lanyastarhotelreservation.model.Addon;
+import com.mycompany.lanyastarhotelreservation.model.Guest;
 import com.mycompany.lanyastarhotelreservation.model.Services;
 import com.mycompany.lanyastarhotelreservation.util.DBConnection;
 import java.sql.*;
@@ -188,6 +188,48 @@ public class BookingDAO {
             }
         }
         return services;
+    }
+    public int saveBookingWithGuest(Booking booking, Guest guest) throws SQLException {
+        String sql = "INSERT INTO bookings (destination_type, destination, check_in_date, " +
+                    "check_out_date, lead_guest_age, number_of_adults, number_of_children, " +
+                    "total_guests, nights_stay, booking_date, status, season, customer_id) " +
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), 'CONFIRMED', ?, ?)";
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+
+            stmt.setString(1, booking.getDestinationType());
+            stmt.setString(2, booking.getDestination());
+
+            // Set dates
+            java.time.LocalDate checkIn = booking.getCheckInDate();
+            java.time.LocalDate checkOut = booking.getCheckOutDate();
+
+            stmt.setDate(3, checkIn != null ? java.sql.Date.valueOf(checkIn) : null);
+            stmt.setDate(4, checkOut != null ? java.sql.Date.valueOf(checkOut) : null);
+
+            stmt.setInt(5, booking.getLeadGuestAge());
+            stmt.setInt(6, booking.getNumberOfAdults());
+            stmt.setInt(7, booking.getNumberOfChildren());
+            stmt.setInt(8, booking.calculatePayingGuests());
+            stmt.setInt(9, booking.calculateNights());
+            stmt.setString(10, booking.getSeason());
+            stmt.setInt(11, guest.getCustomerId());
+
+            int affectedRows = stmt.executeUpdate();
+
+            if (affectedRows == 0) {
+                throw new SQLException("Creating booking failed, no rows affected.");
+            }
+
+            try (ResultSet rs = stmt.getGeneratedKeys()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                } else {
+                    throw new SQLException("Creating booking failed, no ID obtained.");
+                }
+            }
+        }
     }
 }
 

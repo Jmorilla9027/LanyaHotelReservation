@@ -7,6 +7,7 @@ import com.mycompany.lanyastarhotelreservation.model.Addon;
 import com.mycompany.lanyastarhotelreservation.model.Services;
 import com.mycompany.lanyastarhotelreservation.model.Booking;
 import com.mycompany.lanyastarhotelreservation.model.Room;
+import com.mycompany.lanyastarhotelreservation.model.Guest;
 import com.DAO.BookingDAO;
 import com.DAO.RoomDAO;
 import com.DAO.AddonDAO;
@@ -16,6 +17,12 @@ import java.util.List;
 import javax.swing.JOptionPane;
 import java.sql.*;
 import java.time.LocalDate;
+import com.DAO.GuestDAO;
+import java.awt.GridLayout;
+import javax.swing.JPanel;
+import javax.swing.JLabel;
+import javax.swing.JTextField;
+import java.sql.SQLException;
 
 /**
  *
@@ -54,7 +61,7 @@ public class RoomSelectionForm extends javax.swing.JFrame {
         
         
     }
-
+    
     private void initializeForm() {
         cmbAvailAddons.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "--Select--", "Yes", "No" }));
         cmbAvailServices.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "--Select--", "Yes", "No" }));
@@ -1266,6 +1273,61 @@ private void updateRoomTable(List<Room> availableRooms) {
                 booking.setSeason(booking.calculateSeason());
             }
             
+            // ==============================================
+            // ⭐⭐ GUEST INFORMATION COLLECTION ⭐⭐
+            // ==============================================
+            
+            // Create a custom dialog for guest information
+            JPanel guestPanel = new JPanel(new GridLayout(3, 2, 5, 5));
+            JTextField nameField = new JTextField(20);
+            JTextField emailField = new JTextField(20);
+            JTextField phoneField = new JTextField(20);
+            
+            guestPanel.add(new JLabel("Full Name *:"));
+            guestPanel.add(nameField);
+            guestPanel.add(new JLabel("Email:"));
+            guestPanel.add(emailField);
+            guestPanel.add(new JLabel("Phone:"));
+            guestPanel.add(phoneField);
+            
+            int result = JOptionPane.showConfirmDialog(this, guestPanel, 
+                "Guest Information", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+            
+            if (result != JOptionPane.OK_OPTION) {
+                JOptionPane.showMessageDialog(this, 
+                    "Booking cancelled. Guest information is required.", 
+                    "Booking Cancelled", JOptionPane.INFORMATION_MESSAGE);
+                return;
+            }
+            
+            String guestName = nameField.getText().trim();
+            String guestEmail = emailField.getText().trim();
+            String guestPhone = phoneField.getText().trim();
+            
+            // Validate guest name
+            if (guestName.isEmpty()) {
+                JOptionPane.showMessageDialog(this, 
+                    "Guest name is required to proceed with booking.", 
+                    "Required Field", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            
+            // Create Guest object
+            Guest guest = new Guest(guestName, guestEmail, guestPhone);
+            
+            // Validate guest
+            String guestValidation = guest.validate();
+            if (!"VALID".equals(guestValidation)) {
+                JOptionPane.showMessageDialog(this, 
+                    "Guest information error: " + guestValidation, 
+                    "Validation Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            
+            // ==============================================
+            // ⭐⭐ ROOM AVAILABILITY CHECK ⭐⭐
+            // ==============================================
+            
             // Update room availability with quantity
             boolean roomUpdated = roomDAO.updateRoomAvailability(selectedRoomType, destinationType, roomQuantity);
             if (!roomUpdated) {
@@ -1286,34 +1348,102 @@ private void updateRoomTable(List<Room> availableRooms) {
                 return;
             }
             
-            // Save booking (season will be calculated and saved in saveToDatabase method)
+            // ==============================================
+            // ⭐⭐ DATABASE SAVING OPERATIONS ⭐⭐
+            // ==============================================
+            
+            GuestDAO guestDAO = new GuestDAO();
             BookingDAO bookingDAO = new BookingDAO();
-            int bookingId = bookingDAO.saveBooking(booking);
+            
+            // Save guest to database
+            int customerId;
+            try {
+                customerId = guestDAO.saveOrUpdateGuest(guest);
+                guest.setCustomerId(customerId);
+                
+                JOptionPane.showMessageDialog(this, 
+                    "Guest information saved successfully!\n" +
+                    "Guest ID: " + customerId + "\n" +
+                    "Name: " + guest.getName(),
+                    "Guest Saved", JOptionPane.INFORMATION_MESSAGE);
+                
+            } catch (IllegalArgumentException e) {
+                JOptionPane.showMessageDialog(this, 
+                    e.getMessage(), 
+                    "Guest Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            } catch (SQLException e) {
+                JOptionPane.showMessageDialog(this, 
+                    "Database Error saving guest: " + e.getMessage(), 
+                    "Database Error", JOptionPane.ERROR_MESSAGE);
+                e.printStackTrace();
+                return;
+            }
+            
+            // Save booking with guest
+            int bookingId;
+            try {
+                bookingId = bookingDAO.saveBookingWithGuest(booking, guest);
+                
+                JOptionPane.showMessageDialog(this, 
+                    "Booking saved successfully!\n" +
+                    "Booking ID: " + bookingId + "\n" +
+                    "Room: " + selectedRoomType + " × " + roomQuantity + "\n" +
+                    "Season: " + booking.getSeason(),
+                    "Booking Confirmed", JOptionPane.INFORMATION_MESSAGE);
+                
+            } catch (SQLException e) {
+                JOptionPane.showMessageDialog(this, 
+                    "Database Error saving booking: " + e.getMessage(), 
+                    "Save Failed", JOptionPane.ERROR_MESSAGE);
+                e.printStackTrace();
+                return;
+            }
             
             // Save addons and services
             List<Addon> selectedAddons = getSelectedAddons();
             List<Services> selectedServices = getSelectedServices();
             
             if (!selectedAddons.isEmpty()) {
-                bookingDAO.saveBookingAddons(bookingId, selectedAddons);
-            }
-            if (!selectedServices.isEmpty()) {
-                bookingDAO.saveBookingServices(bookingId, selectedServices);
+                try {
+                    bookingDAO.saveBookingAddons(bookingId, selectedAddons);
+                    System.out.println("Saved " + selectedAddons.size() + " addons");
+                } catch (SQLException e) {
+                    JOptionPane.showMessageDialog(this, 
+                        "Warning: Addons could not be saved: " + e.getMessage(), 
+                        "Partial Save", JOptionPane.WARNING_MESSAGE);
+                    e.printStackTrace();
+                }
             }
             
-            // Open the reservation summary form with room quantity
+            if (!selectedServices.isEmpty()) {
+                try {
+                    bookingDAO.saveBookingServices(bookingId, selectedServices);
+                    System.out.println("Saved " + selectedServices.size() + " services");
+                } catch (SQLException e) {
+                    JOptionPane.showMessageDialog(this, 
+                        "Warning: Services could not be saved: " + e.getMessage(), 
+                        "Partial Save", JOptionPane.WARNING_MESSAGE);
+                    e.printStackTrace();
+                }
+            }
+            
+            // ==============================================
+            // ⭐⭐ OPEN RESERVATION SUMMARY ⭐⭐
+            // ==============================================
+            
             openReservationSummary(booking, selectedRoom, selectedAddons, 
                       selectedServices, destinationType, bookingId, roomQuantity);
             
-        } catch (SQLException e) {
-            JOptionPane.showMessageDialog(this, 
-                "Database Error: " + e.getMessage(), 
-                "Save Failed", JOptionPane.ERROR_MESSAGE);
-            e.printStackTrace();
         } catch (NumberFormatException e) {
             JOptionPane.showMessageDialog(this, 
                 "Invalid room quantity selected", 
                 "Validation Error", JOptionPane.ERROR_MESSAGE);
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, 
+                "Unexpected error: " + e.getMessage(), 
+                "Error", JOptionPane.ERROR_MESSAGE);
+            e.printStackTrace();
         }
     }
     }//GEN-LAST:event_btnNextActionPerformed
