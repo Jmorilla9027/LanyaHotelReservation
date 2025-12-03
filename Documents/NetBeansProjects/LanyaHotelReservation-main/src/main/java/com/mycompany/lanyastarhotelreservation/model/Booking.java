@@ -119,24 +119,86 @@ public class Booking {
         return dao.saveBooking(this);
     }
     
+
     public String calculateSeason() {
         if (checkInDate == null) {
             return "Lean"; // Default season
         }
-        
+
         int month = checkInDate.getMonthValue();
-        
-        if (month >= 3 && month <= 5) {
-            return "Lean";
-        } else if (month >= 6 && month <= 8) {
-            return "High";
-        } else if (month >= 9 && month <= 11) {
-            return "Peak";
-        } else {
+        int day = checkInDate.getDayOfMonth();
+        int year = checkInDate.getYear();
+
+        // ============================================
+        // 1. SPECIAL EVENTS (Treat as Super Peak)
+        // ============================================
+        if (isSpecialEvent(year, month, day)) {
             return "Super Peak";
         }
+
+        // ============================================
+        // 2. SEASON LOGIC (Based on your inclusive dates)
+        // ============================================
+
+        // A) SUPER PEAK: December 20 to January 5
+        if ((month == 12 && day >= 20) || (month == 1 && day <= 5)) {
+            return "Super Peak";
+        }
+
+        // B) HIGH SEASON: 
+        //    - November 1 to December 19
+        //    - January 6 to February 28
+        if (month == 11) { // November 1-30
+            return "High";
+        }
+        if (month == 12 && day <= 19) { // December 1-19
+            return "High";
+        }
+        if (month == 1 && day >= 6) { // January 6-31
+            return "High";
+        }
+        if (month == 2) { // February 1-28/29
+            return "High";
+        }
+
+        // C) PEAK SEASON: March 1 to May 31
+        if (month >= 3 && month <= 5) {
+            return "Peak";
+        }
+
+        // D) LEAN SEASON: June 1 to October 31 (default)
+        //    - June, July, August, September, October
+        return "Lean";
+    }
+    private boolean isSpecialEvent(int year, int month, int day) {
+    // ============================================
+    // HOLY WEEK DATES (Update yearly!)
+    // ============================================
+    if (year == 2024 && month == 3) { // March 2024
+        // Holy Week 2024: March 24-30
+        return (day >= 24 && day <= 30);
+    }
+    if (year == 2025 && month == 4) { // April 2025
+        // Holy Week 2025: April 13-19 (example - check actual dates)
+        return (day >= 13 && day <= 19);
     }
     
+    // ============================================
+    // CHINESE NEW YEAR DATES (Update yearly!)
+    // ============================================
+    if (year == 2024 && month == 2 && day == 10) { // Feb 10, 2024
+        return true;
+    }
+    if (year == 2025 && month == 1 && day == 29) { // Jan 29, 2025 (example)
+        return true;
+    }
+    
+    // ============================================
+    // ADD MORE SPECIAL EVENTS AS NEEDED
+    // ============================================
+    
+    return false;
+}
     public static LocalDate parseDate(String dateStr) {
         if (dateStr == null || dateStr.trim().isEmpty()) {
             return null;

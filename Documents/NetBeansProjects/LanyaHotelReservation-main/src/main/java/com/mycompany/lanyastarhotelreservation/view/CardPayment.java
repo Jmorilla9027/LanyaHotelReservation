@@ -13,7 +13,7 @@ import java.sql.*;
  */
 public class CardPayment extends javax.swing.JFrame {
     private double totalAmount;
-    private int bookingId; // Add bookingId field
+    private int bookingId; // 
     /**
      * Creates new form CardPayment
      */
@@ -36,10 +36,8 @@ public class CardPayment extends javax.swing.JFrame {
     }
     
     private void initializeForm() {
-        // Add action listener to DONE button
         jBtnDone.addActionListener(e -> processPayment());
         
-        // Optional: Add input formatters
         jTxtCardNumber.addKeyListener(new java.awt.event.KeyAdapter() {
             public void keyTyped(java.awt.event.KeyEvent evt) {
                 char c = evt.getKeyChar();
@@ -88,7 +86,7 @@ public class CardPayment extends javax.swing.JFrame {
             // 4. Create Payment object with bookingId
             Payment payment = new Payment(totalAmount, cardNumber, ccv, bookingId);
 
-            // 5. Validate using Payment model (this handles empty fields too)
+            // 5. Validate using Payment model 
             String validationResult = payment.validate();
 
             if (!"VALID".equals(validationResult)) {
@@ -126,7 +124,7 @@ public class CardPayment extends javax.swing.JFrame {
                     JOptionPane.showMessageDialog(this, message, 
                         "Payment Approved", JOptionPane.INFORMATION_MESSAGE);
 
-                    // Clear sensitive data
+                    
                     jTxtCardNumber.setText("");
                     jTxtExpiryDate.setText("");
                     jTxtCCV.setText("");

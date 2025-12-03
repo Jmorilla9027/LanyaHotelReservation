@@ -33,17 +33,12 @@ public class ReservationSummary extends javax.swing.JFrame {
     /**
      * Creates new form ReservationSummary
      */
-    public ReservationSummary(int bookingId) {  // Add parameter here
+    public ReservationSummary(int bookingId) {  
         initComponents();
-
-        // Call the new method
         initializeTables();
-
-        // Load data from database
-        loadBookingFromDatabase(bookingId);  // Call the new method
+        loadBookingFromDatabase(bookingId); 
     }
 
-    // Keep the old constructor too (for compatibility)
     public ReservationSummary() {
         initComponents();
         initializeTables();
@@ -93,11 +88,11 @@ public class ReservationSummary extends javax.swing.JFrame {
         this.season = season;
         this.bookingId = bookingId;
         this.finalAmount = finalAmount;
-        this.roomQuantity = roomQuantity; // Store room quantity
+        this.roomQuantity = roomQuantity;
 
         // Update all tables
         updateBookingInfoTable();
-        updateRoomSummaryTable(); // This needs to use roomQuantity
+        updateRoomSummaryTable(); 
         updateAddonsTable();
         updateServicesTable();
         updateTotalAmountTable();
@@ -114,15 +109,15 @@ public class ReservationSummary extends javax.swing.JFrame {
                 return;
             }
 
-            // 2. Load room details (simplified - you might need to adjust)
+            // 2. Load room details 
             RoomDAO roomDAO = new RoomDAO();
-            Room room = roomDAO.getRoomByType("Standard", booking.getDestinationType()); // Simplified
+            Room room = roomDAO.getRoomByType("Standard", booking.getDestinationType()); 
 
             // 3. Load addons and services
             List<Addon> addons = bookingDAO.getBookingAddons(bookingId);
             List<Services> services = bookingDAO.getBookingServices(bookingId);
 
-            // 4. Calculate total (simplified)
+            // 4. Calculate total 
             double total = 0;
             if (room != null) {
                 total = room.getPrice(booking.getDestinationType(), booking.getSeason()) 
@@ -143,60 +138,82 @@ public class ReservationSummary extends javax.swing.JFrame {
                 "Database Error", JOptionPane.ERROR_MESSAGE);
         }
     }
-private void updateBookingInfoTable() {
-    DefaultTableModel model = (DefaultTableModel) jTblBookingFormSummary.getModel();
-    model.setRowCount(0);
-    
-    if (booking != null) {
-        try {
-            // ⭐⭐ LOAD GUEST USING GUESTDAO ⭐⭐
-            GuestDAO guestDAO = new GuestDAO();
-            Guest guest = guestDAO.getGuestByBookingId(bookingId);
-            
-            if (guest != null) {
+    private void updateBookingInfoTable() {
+        DefaultTableModel model = (DefaultTableModel) jTblBookingFormSummary.getModel();
+        model.setRowCount(0);
+
+        model.setColumnIdentifiers(new String[]{
+            "BOOKING ID",
+            "GUEST NAME", 
+            "EMAIL",
+            "PHONE",
+            "LEAD GUEST AGE", 
+            "NO. ADULTS",
+            "NO. CHILDREN",
+            "CHECK-IN DATE",
+            "CHECK-OUT DATE"
+        });
+
+        if (booking != null) {
+            try {
+                // Load guest using GuestDAO
+                GuestDAO guestDAO = new GuestDAO();
+                Guest guest = guestDAO.getGuestByBookingId(bookingId);
+
+                // Format dates
+                String checkInStr = (booking.getCheckInDate() != null) 
+                    ? booking.getCheckInDate().toString() 
+                    : "N/A";
+
+                String checkOutStr = (booking.getCheckOutDate() != null) 
+                    ? booking.getCheckOutDate().toString() 
+                    : "N/A";
+
+                if (guest != null) {
+                    // Guest found - show all info
+                    model.addRow(new Object[]{
+                        bookingId,                           // BOOKING ID
+                        guest.getName(),                     // GUEST NAME
+                        guest.getEmail() != null ? guest.getEmail() : "N/A",  // EMAIL
+                        guest.getPhone() != null ? guest.getPhone() : "N/A",  // PHONE
+                        booking.getLeadGuestAge(),           // LEAD GUEST AGE ✅
+                        booking.getNumberOfAdults(),         // NO. ADULTS
+                        booking.getNumberOfChildren(),       // NO. CHILDREN  
+                        checkInStr,                          // CHECK-IN DATE
+                        checkOutStr                          // CHECK-OUT DATE
+                    });
+                } else {
+                    // No guest found - fallback to basic booking info
+                    model.addRow(new Object[]{
+                        bookingId,
+                        "Guest Not Found",
+                        "N/A",
+                        "N/A",
+                        booking.getLeadGuestAge(),           // LEAD GUEST AGE ✅
+                        booking.getNumberOfAdults(),
+                        booking.getNumberOfChildren(),
+                        checkInStr,
+                        checkOutStr
+                    });
+                }
+
+            } catch (SQLException e) {
+                e.printStackTrace();
+                // Database error fallback
                 model.addRow(new Object[]{
                     bookingId,
-                    guest.getName(),
-                    guest.getEmail(),
-                    guest.getPhone(),
-                    booking.getLeadGuestAge(),
-                    booking.getNumberOfAdults(),
-                    booking.getNumberOfChildren(),
-                    booking.getCheckInDate(),
-                    booking.getCheckOutDate()
-                });
-            } else {
-                // Fallback if no guest found
-                model.addRow(new Object[]{
-                    bookingId,
-                    "Guest",
+                    "Database Error",
                     "N/A",
                     "N/A",
-                    booking.getLeadGuestAge(),
+                    booking.getLeadGuestAge(),               // LEAD GUEST AGE ✅
                     booking.getNumberOfAdults(),
                     booking.getNumberOfChildren(),
-                    booking.getCheckInDate(),
-                    booking.getCheckOutDate()
+                    "N/A",
+                    "N/A"
                 });
             }
-            
-        } catch (SQLException e) {
-            e.printStackTrace();
-            // Fallback to basic info
-            model.addRow(new Object[]{
-                bookingId,
-                "Guest",
-                "N/A",
-                "N/A",
-                booking.getLeadGuestAge(),
-                booking.getNumberOfAdults(),
-                booking.getNumberOfChildren(),
-                booking.getCheckInDate(),
-                booking.getCheckOutDate()
-            });
         }
     }
-}
     
     private void updateRoomSummaryTable() {
         DefaultTableModel model = (DefaultTableModel) jTblRoomSummary.getModel();

@@ -459,10 +459,8 @@ public class BookingForm extends javax.swing.JFrame {
 
     private void btnNextActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnNextActionPerformed
 try {
-        // Create Booking model object and collect data from form
         Booking booking = collectFormData();
         
-        // Use your Booking model's validate() method that returns List<String>
         List<String> validationErrors = booking.validate();
         
         if (!validationErrors.isEmpty()) {
@@ -521,7 +519,6 @@ try {
             childrenAges.add(parseChildAge(txtChildAge4.getText().trim()));
         }
 
-        // Create Booking object using empty constructor and setters
         Booking booking = new Booking();
         booking.setDestinationType(destinationType);
         booking.setDestination(destination);
@@ -554,7 +551,6 @@ try {
         }
     }
 
-// Keep your existing helper methods
 private LocalDate parseDate(String dateText) throws DateTimeParseException {
     if (dateText == null || dateText.trim().isEmpty()) {
         throw new DateTimeParseException("Empty date", "", 0);

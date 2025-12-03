@@ -14,7 +14,7 @@ import java.sql.*;
  */
 public class CashPayment extends javax.swing.JFrame {
     private double totalAmount;
-    private int bookingId; // Add bookingId field
+    private int bookingId; 
     
     public CashPayment() {
         initComponents();
@@ -33,13 +33,13 @@ public class CashPayment extends javax.swing.JFrame {
     }
     
     private void initializeForm() {
-        // Set total amount in the text field
+        
         if (totalAmount > 0) {
             jTxtCashToPay.setText(String.format("P %,.2f", totalAmount));
         }
         jTxtCashToPay.setEditable(false);
         
-        // Add action listener to DONE button
+   
         jBtnDone.addActionListener(e -> processPayment());
     }
     
@@ -67,7 +67,7 @@ public class CashPayment extends javax.swing.JFrame {
             cashStr = cashStr.replace("P", "").replace(",", "").trim();
             double cashReceived = Double.parseDouble(cashStr);
             
-            // 3. Get total amount from field or stored value
+            // 3. 
             double amountToPay = totalAmount;
             if (amountToPay <= 0 && jTxtCashToPay.getText() != null) {
                 String totalStr = jTxtCashToPay.getText().replace("P", "").replace(",", "").trim();
@@ -87,7 +87,7 @@ public class CashPayment extends javax.swing.JFrame {
             
             // 6. Validate using Payment model
             String validationResult = payment.validate();
-            
+        
             if (!"VALID".equals(validationResult)) {
                 JOptionPane.showMessageDialog(this, 
                     validationResult, 
